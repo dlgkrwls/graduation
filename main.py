@@ -239,14 +239,14 @@ def main():
     # P2 = np.dot(camera_matrix2, np.hstack((R, T)))
 
     # 동영상 로드해서하기 no cam
-    #file_path ='output_test.mp4'
+    file_path2 ='detect_5_squart.mp4'
     #file_path2 = 'squart.mp4'
 
     # cam 2개 사용시
-    img1 =cv2.VideoCapture(0)
-    #img2 =cv2.VideoCapture(file_path2)
+    #img1 =cv2.VideoCapture(0)
+    img1 =cv2.VideoCapture(file_path2)
 
-    output_file = f"data/stance_test.mp4"
+    output_file = f"data/knee_test.mp4"
     #output_file2 = f"squart.mp4"
     frame_width = int(img1.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(img1.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -331,8 +331,11 @@ def main():
             #scaled_coords_3d = scale_3d_coords(coords_3d)
             # 3d 좌표찍기
             #draw_3d_landmarks(ax,scaled_coords_3d,connections)
-            Pose_check.check_stance(camera_coords1,0.1)
-            print(f"대가리각도는: ",Pose_check.check_neck_angle(camera_coords1))
+            #Pose_check.check_stance(camera_coords1,0.1)
+            #left_head, right_head = Pose_check.check_neck_angle(camera_coords1)
+            #print(f"왼쪽 대가리각도는: ",left_head)
+            #print(f"오쪽 대가리각도는: ",right_head)
+            print(Pose_check.calculate_knee_angle(camera_coords1))
 
         #print(stance)
             #print('elbow_angle :',calculate_angle('left_shoulder','left_elbow','left_wrist',camera_coords1))

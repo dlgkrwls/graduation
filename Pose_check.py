@@ -31,38 +31,47 @@ def check_neck_angle(coords_2d_1):
     right_shoulder = coords_2d_1['right_shoulder']
     nose = coords_2d_1['nose']
     
-    # 왼쪽 어깨에서 코로 향하는 벡터
-    shoulder_vector = right_shoulder - left_shoulder  # 어깨 간 벡터
-    nose_to_mid_shoulder = nose - (left_shoulder + right_shoulder) / 2  # 코에서 어깨 중간으로 향하는 벡터
+   # 벡터 계산
+    left_to_nose = nose - left_shoulder  # 왼쪽 어깨에서 코로 향하는 벡터
+    left_to_right = right_shoulder - left_shoulder  # 왼쪽 어깨에서 오른쪽 어깨로 향하는 벡터
 
-    # 두 벡터 간의 코사인 값 계산
-    cos_theta = np.dot(shoulder_vector, nose_to_mid_shoulder) / (np.linalg.norm(shoulder_vector) * np.linalg.norm(nose_to_mid_shoulder))
+    right_to_nose = nose - right_shoulder  # 오른쪽 어깨에서 코로 향하는 벡터
+    right_to_left = left_shoulder - right_shoulder  # 오른쪽 어깨에서 왼쪽 어깨로 향하는 벡터
 
-    # 각도를 라디안으로 변환 (cosine 값의 범위를 -1 ~ 1로 제한)
-    angle_rad = np.arccos(np.clip(cos_theta, -1.0, 1.0))
-    
-    # 각도를 도(degree)로 변환
-    neck_angle = np.degrees(angle_rad)
-    
-    return neck_angle
+    # 왼쪽 어깨에서 이루는 각도 (왼쪽 어깨 - 코 - 오른쪽 어깨)
+    cos_theta_left = np.dot(left_to_nose, left_to_right) / (np.linalg.norm(left_to_nose) * np.linalg.norm(left_to_right))
+    angle_left_rad = np.arccos(np.clip(cos_theta_left, -1.0, 1.0))
+    angle_left_deg = np.degrees(angle_left_rad)
+
+    # 오른쪽 어깨에서 이루는 각도 (오른쪽 어깨 - 코 - 왼쪽 어깨)
+    cos_theta_right = np.dot(right_to_nose, right_to_left) / (np.linalg.norm(right_to_nose) * np.linalg.norm(right_to_left))
+    angle_right_rad = np.arccos(np.clip(cos_theta_right, -1.0, 1.0))
+    angle_right_deg = np.degrees(angle_right_rad)
+
+    return angle_left_deg, angle_right_deg
 
 # 허리 굽힘 측정을 위한 허리 길이 계산
 # 다른 방법도 생각해야됨
 # 이때 길이의 비교는 이전 프레임과의 오차로 계산해야될듯? ex)이전 허리길이 10 현재 허리길이 5 <= 굽힘 발생
-def check_stance2(coords_2d_2, tolerance=0.1):
+def check_waist_front(coords_2d_2, tolerance=0.1):
     left_hip = coords_2d_2['left_hip']
     right_hip = coords_2d_2['right_hip']
     left_shoulder = coords_2d_2['left_shoulder']
     right_shoulder = coords_2d_2['right_shoulder']
     
-    #유클리드 거리가 안정적이라고 하더라
     left_width = np.linalg.norm(left_shoulder - left_hip)
     right_width = np.linalg.norm(right_shoulder - right_hip)
     
-    # 어깨너비와 발너비 비교
     stance_correct = abs(left_width + right_width) / 2
     
     return stance_correct
+
+def check_waist_length_diff(pre_len,n_len):
+    check = abs(n_len - pre_len) / n_len <= 0.05
+    if check:
+        return "굳"
+    else:
+        return "벧"
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # 측면 캠
@@ -105,11 +114,15 @@ def calculate_knee_angle(coords_2d_2, side='left'):
     angle_rad = np.arccos(cos_theta)  # 라디안 값의 각도
     angle_deg = np.degrees(angle_rad)  # 각도를 도(degree)로 변환
     
-    if angle_deg > 60 and angle_deg < 90 :
+    if angle_deg > 170:
+        print("섯네")
+    elif angle_deg > 100 and angle_deg < 170:
+        print("너무 안 앉음")
+    elif angle_deg > 70 and angle_deg < 100 :
         print("하프 스퀏")
-    elif angle_deg > 90 and angle_deg < 120 :
+    elif angle_deg > 40 and angle_deg < 70 :
         print("스퀏")
-    elif angle_deg > 120:
+    elif angle_deg > 30:
         print("너무 깊음")
     else :
         print("너무 안 앉음")
@@ -119,7 +132,7 @@ def calculate_knee_angle(coords_2d_2, side='left'):
 
 # 허리 굽힘 측정을 위한 허리 길이 계산
 # 측면 버전
-def check_stance3(coords_2d_2, side='left'):
+def check_waist_side(coords_2d_2, side='left'):
     if side == 'left':
         left_hip = coords_2d_2['left_hip']
         left_shoulder = coords_2d_2['left_shoulder']
