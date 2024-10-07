@@ -1,9 +1,9 @@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # 정면 캠
 # 스탠스 발 어깨 너비 벌리기
-def check_stance(coords_2d_1, tolerance=0.1):
-    left_foot = coords_2d_1['left_foot']
-    right_foot = coords_2d_1['right_foot']
+def check_stance(coords_2d_1, tolerance=10):
+    left_foot = coords_2d_1['left_wrist']
+    right_foot = coords_2d_1['right_wrist']
     left_shoulder = coords_2d_1['left_shoulder']
     right_shoulder = coords_2d_1['right_shoulder']
     

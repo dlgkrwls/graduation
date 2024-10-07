@@ -4,6 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 import time
+import Pose_check
+
+
 
 mp_pose = mp.solutions.pose
 # 카메라 및 MediaPipe 설정
@@ -244,7 +247,7 @@ def main():
     img1 =cv2.VideoCapture(0)
     #img2 =cv2.VideoCapture(file_path2)
 
-    output_file = f"data/elbow_120_json_test.mp4"
+    output_file = f"data/stance_test.mp4"
     #output_file2 = f"squart.mp4"
     frame_width = int(img1.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(img1.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -312,11 +315,12 @@ def main():
 
             # 2D 좌표 찍기
             img1_landmarks = draw_2d_landmarks(frame1,camera_coords1,connections)
-            elbow_angle = calculate_angle('left_shoulder','left_elbow','left_wrist',camera_coords1)
+            #elbow_angle = calculate_angle('left_shoulder','left_elbow','left_wrist',camera_coords1)
+            stance = Pose_check.check_stance(camera_coords1)
+            print()
+            timestamps,threshold = record_timestamp(stance,current_time,timestamps,threshold)
 
-            timestamps,threshold = record_timestamp(elbow_angle,current_time,timestamps,threshold)
-
-            print(elbow_angle,current_time)
+            #print(elbow_angle,current_time)
             # if elbow_angle> 85.0 and elbow_angle<95.0:
             #     frame_filename = f'frame_{save_count}_{int(elbow_angle)}.jpg'
             #     cv2.imwrite(frame_filename, frame1)
