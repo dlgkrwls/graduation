@@ -1,7 +1,9 @@
+import numpy as np
+
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # 정면 캠
 # 스탠스 발 어깨 너비 벌리기
-def check_stance(coords_2d_1, tolerance=10):
+def check_stance(coords_2d_1, tolerance=0.1):
     left_foot = coords_2d_1['left_wrist']
     right_foot = coords_2d_1['right_wrist']
     left_shoulder = coords_2d_1['left_shoulder']
@@ -13,8 +15,12 @@ def check_stance(coords_2d_1, tolerance=10):
     
     # 어깨너비와 발너비 비교
     stance_correct = abs(foot_width - shoulder_width) / shoulder_width <= tolerance
-    
-    return "어깨 너비 맞음." if stance_correct else "어깨너비 아님."
+    if stance_correct:
+        print("맞노")
+    else:
+        print("ㅋㅋ")
+
+    return "시발시발시발시발"
 
 # 이건 목 각도인데 완전 지피티 쓴거
 # 너무 위나 아래를 보지 않도록 해야되는데 그게 어느정도인지 모름
@@ -26,22 +32,24 @@ def check_neck_angle(coords_2d_1):
     nose = coords_2d_1['nose']
     
     # 왼쪽 어깨에서 코로 향하는 벡터
-    vector_left_shoulder = nose - left_shoulder
+    shoulder_vector = right_shoulder - left_shoulder  # 어깨 간 벡터
+    nose_to_mid_shoulder = nose - (left_shoulder + right_shoulder) / 2  # 코에서 어깨 중간으로 향하는 벡터
+
+    # 두 벡터 간의 코사인 값 계산
+    cos_theta = np.dot(shoulder_vector, nose_to_mid_shoulder) / (np.linalg.norm(shoulder_vector) * np.linalg.norm(nose_to_mid_shoulder))
+
+    # 각도를 라디안으로 변환 (cosine 값의 범위를 -1 ~ 1로 제한)
+    angle_rad = np.arccos(np.clip(cos_theta, -1.0, 1.0))
     
-    # 오른쪽 어깨에서 코로 향하는 벡터
-    vector_right_shoulder = nose - right_shoulder
-    
-    # 벡터 간의 내적을 이용해 각도 계산
-    cos_theta = np.dot(vector_left_shoulder, vector_right_shoulder) / (np.linalg.norm(vector_left_shoulder) * np.linalg.norm(vector_right_shoulder))
-    angle_rad = np.arccos(np.clip(cos_theta, -1.0, 1.0))  # 라디안으로 변환
-    neck_angle = np.degrees(angle_rad)  # 도(degree)로 변환
+    # 각도를 도(degree)로 변환
+    neck_angle = np.degrees(angle_rad)
     
     return neck_angle
 
 # 허리 굽힘 측정을 위한 허리 길이 계산
 # 다른 방법도 생각해야됨
 # 이때 길이의 비교는 이전 프레임과의 오차로 계산해야될듯? ex)이전 허리길이 10 현재 허리길이 5 <= 굽힘 발생
-def check_stance(coords_2d_2, tolerance=0.1):
+def check_stance2(coords_2d_2, tolerance=0.1):
     left_hip = coords_2d_2['left_hip']
     right_hip = coords_2d_2['right_hip']
     left_shoulder = coords_2d_2['left_shoulder']
@@ -111,7 +119,7 @@ def calculate_knee_angle(coords_2d_2, side='left'):
 
 # 허리 굽힘 측정을 위한 허리 길이 계산
 # 측면 버전
-def check_stance(coords_2d_2, side='left'):
+def check_stance3(coords_2d_2, side='left'):
     if side == 'left':
         left_hip = coords_2d_2['left_hip']
         left_shoulder = coords_2d_2['left_shoulder']
