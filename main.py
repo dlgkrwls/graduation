@@ -88,9 +88,10 @@ def calculate_2d_angle(v1, v2):
     return np.degrees(angle)
 
 # 이건 그냥 좌표찍기
-def draw_2d_landmarks(frame,coords,connections):
+def draw_2d_landmarks(frame,coords,connections,body_part):
     for part,coord in coords.items():
-        cv2.circle(frame,(int(coord[0]),int(coord[1])),10,(255,0,0),-1)
+        if part in body_part:
+            cv2.circle(frame,(int(coord[0]),int(coord[1])),5,(255,0,0),-1)
 
     for connection in connections:
         start, end = connection
@@ -213,55 +214,49 @@ def extract_camera_coords(landmarks, frame):
 
 
 # 수정이 필요함 함수 이함수안에 우리가 봐야할 check포인트 넣고 해줘야함
-def record_timestamp(stance,knee_angle,knee_position,waist_check,time,stamp,threshold):
+def record_timestamp(stance,knee_angle,knee_position,waist_check,time,stamp,stance_threshold,knee_angle_threshold,knee_position_threshold,waist_threshold):
     if not (stance and knee_angle and knee_position and waist_check):  # 하나라도 0이면
         if stance == 0:
             stamp.append((time, "stance"))
+            stance_threshold = True
         if knee_angle == 0:
             stamp.append((time, "knee_angle"))
+            knee_angle_threshold = True
         if knee_position == 0:
             stamp.append((time, "knee_position"))
+            knee_position_threshold = True
         if waist_check == 0:
             stamp.append((time, "waist_check"))
-        threshold = True
-    else :
-        threshold = False
-    return stamp ,threshold
+            waist_threshold = True
+    return stamp , stance_threshold, knee_angle_threshold, knee_position_threshold, waist_threshold
 
-def distance_shoudler_knee(a):
-    # 정면 cap에서 양 어깨 ,양 무릎 좌표받아와서 체크하기 근데 어느정도면 문제인지
-    return a
+def get_time_in_seconds(frame_count, fps):
+    return frame_count / fps
 def main():
     camera_matrix1, dist_coeffs1, camera_matrix2, dist_coeffs2 = setup_camera()
-    
-    # 투영 행렬
-    R = np.array([[0.88033205, -0.0700383, -0.46915894],
-                  [0.1120291, 0.99175901, 0.06215738],
-                  [0.46093921, -0.10727859, 0.88092358]])
-    T = np.array([[10.97330599], [-0.43874374], [0.15791984]])
-    
-    P1 = np.dot(camera_matrix1, np.hstack((np.eye(3), np.zeros((3, 1)))))
-    P2 = np.dot(camera_matrix2, np.hstack((R, T)))
+
+    # # 투영 행렬
+    # R = np.array([[0.88033205, -0.0700383, -0.46915894],
+    #               [0.1120291, 0.99175901, 0.06s215738],
+    #               [0.46093921, -0.10727859, 0.88092358]])
+    # T = np.array([[10.97330599], [-0.43874374], [0.15791984]])
+    #
+    # P1 = np.dot(camera_matrix1, np.hstack((np.eye(3), np.zeros((3, 1)))))
+    # P2 = np.dot(camera_matrix2, np.hstack((R, T)))
 
     # 동영상 로드해서하기 no cam
-    file_path1 =f'squart_front.mp4'
-    file_path2 = f'squart_side.mp4'
+    file_path ='data/detect_5_squart_front.mp4'
+    file_path2 = 'data/detect_5_squart.mp4'
 
     # cam 2개 사용시
-    img1 =cv2.VideoCapture(file_path1)
-    img2 =cv2.VideoCapture(file_path2)
+    #img1 =cv2.VideoCapture(file_path)
+    img2 =cv2.VideoCapture(1)
+    img1 =cv2.VideoCapture(file_path2)
 
-    output_file = f"data/test_front.mp4"
-    output_file2 = f"data/test_side.mp4"
     frame_width = int(img1.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(img1.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    video_writer = cv2.VideoWriter(output_file, fourcc, 30,(frame_width, frame_height))
-    video_writer = cv2.VideoWriter(output_file2, fourcc, 30,(frame_width, frame_height))
 
-    #img2 = cv2.VideoCapture(1)
-    #fig =plt.figure()
-    #ax = fig.add_subplot(111,projection='3d')
 
     pose_model = setup_pose_model()
 
@@ -269,6 +264,9 @@ def main():
     body_parts = ['nose', 'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
                   'left_wrist', 'right_wrist', 'left_hip', 'right_hip', 'left_knee',
                   'right_knee', 'left_ankle', 'right_ankle', 'left_heel', 'right_heel', 'left_foot', 'right_foot']
+    body_parts_right = ['nose', 'right_shoulder',  'right_elbow',
+                  'right_wrist',  'right_hip',
+                  'right_knee',  'right_ankle', 'right_heel', 'right_foot']
     ## 각관절 연결 집합
     connections = [
         ("left_shoulder", "left_elbow"),("left_elbow", "left_wrist"),("right_shoulder", "right_elbow"),("right_elbow", "right_wrist"),
@@ -287,23 +285,33 @@ def main():
         ('right_ankle', 'right_heel'),
         ('right_ankle', 'right_foot'), ('right_foot', 'right_heel'),
     ]
-    
-    body_parts_right = ['nose', 'right_shoulder',  'right_elbow',
-                  'right_wrist',  'right_hip',
-                  'right_knee',  'right_ankle', 'right_heel', 'right_foot']
-    
+
     # 여기에 넣어서 한번에 각도 관절 뽑기
     check_angle =[('left_shoulder','left_elbow','left_wrist'),('right_shoulder','right_elbow','right_wrist'),
                   ('left_hip','left_knee','left_ankle'),('right_hip','right_knee','right_ankle')]
     recording = False
-    output_file = None
-    #video_writer = None
+    front_output_file = 'front_downsampling_10fps.mp4'
+    side_output_file = 'side_downsampling_10fps.mp4'
+    health_warning = { 'frames':[]
+    }
+    front_video_writer = cv2.VideoWriter(front_output_file, fourcc, 30, (frame_width, frame_height))
+    side_video_writer = cv2.VideoWriter(side_output_file, fourcc, 30, (frame_width, frame_height))
+
     frame_idx = 0
     angles = []
     timestamps = []
     save_count=0
     start_time=None
     threshold=False
+    img1_landmarks=None
+    img2_landmarks =None
+    side_coords2=None
+    front_coords1=None
+    stance_threshold=False
+    knee_angle_threshold=False
+    knee_position_threshold=False
+    waist_threshold=False
+
     while True:
         ret1, frame1 = img1.read()
         ret2, frame2 = img2.read()
@@ -329,55 +337,74 @@ def main():
 
         if frame_idx % 3 == 0: # 30프레임마다
             if pose_results1.pose_landmarks and pose_results2.pose_landmarks:
-                # 각 관절 좌표
-                front_coords1 = extract_camera_coords(pose_results1.pose_landmarks.landmark, frame1_undistorted)
-                side_coords2 = extract_camera_coords(pose_results2.pose_landmarks.landmark, frame2_undistorted)
-                ###################################자세 체크 부분 ################################################
-
-                #Pose_check.check_stance(front_coords1)
-
-                # 2D 좌표 찍기
-                img1_landmarks = draw_2d_landmarks(frame1_undistorted,front_coords1,connections,body_parts)
-                img2_landmarks = draw_2d_landmarks(frame2_undistorted,side_coords2,connections_right,body_parts_right)
-
-                stance = Pose_check.check_stance(front_coords1,0.1)
-                left_head, right_head = Pose_check.check_neck_angle(front_coords1)
-                print(f"왼쪽 대가리각도는: ",left_head)
-                print(f"오쪽 대가리각도는: ",right_head)
-                knee_angle = Pose_check.calculate_knee_angle(side_coords2)
-                knee_position = Pose_check.check_knee_position(side_coords2)
-                waist = Pose_check.check_waist_side(side_coords2)
-                waist_check=Pose_check.check_waist_length_diff(waist,waist2)
-                waist2 = waist
-
-                timestamps,threshold = record_timestamp(stance,knee_angle,knee_position,waist_check, current_time,timestamps,threshold)
+                    # 각 관절 좌표
+                    front_coords1 = extract_camera_coords(pose_results1.pose_landmarks.landmark, frame1_undistorted)
+                    side_coords2 = extract_camera_coords(pose_results2.pose_landmarks.landmark, frame2_undistorted)
+                    ###################################자세 체크 부분 ################################################
+                    ##########여기에 김시진 횟수 스탬프 넣어봐
+                    ##########(한솔) 겸사겸사 stance_threshold,knee_angle_threshold,knee_position_threshold,waist_threshold = False 하는 것도
 
 
+                    # ########## 정면 카메라 feature########
+                    # foot_stance = Pose_check.check_stance(front_coords1)
+                    # neck_warning,neck_angle = Pose_check.check_neck_angle(front_coords1)
+
+                    # ########## 측면 카메라 feature#########
+
+                    # knee_position = bool(Pose_check.check_knee_position(side_coords2, side='right'))
+                    # knee_warning, knee_angle = Pose_check.calculate_knee_angle(side_coords2, side='right')
+
+                    # if foot_stance or neck_warning or knee_position or knee_warning:
+                    #     frame_data = {"frame_index": int(frame_idx)}  # numpy.int를 int로 변환
+                    #     frame_data['Stance'] = float(foot_stance)  # 필요한 경우 float 변환
+                    #     frame_data['neck_angle'] = (bool(neck_warning), float(neck_angle))
+                    #     frame_data['knee_position'] = knee_position  # 이미 bool로 변환됨
+                    #     frame_data['knee_angle'] = (bool(knee_warning), float(knee_angle))
+
+                    #     health_warning['frames'].append(frame_data)
 
 
-                #elbow_angle = calculate_angle('left_shoulder','left_elbow','left_wrist',camera_coords1)
-                #timestamps,threshold = record_timestamp(stance,current_time,timestamps,threshold)
 
-                #print(elbow_angle,current_time)
-                # if elbow_angle> 85.0 and elbow_angle<95.0:
-                #     frame_filename = f'frame_{save_count}_{int(elbow_angle)}.jpg'
-                #     cv2.imwrite(frame_filename, frame1)
-                #     save_count += 1
-                #     print(f'Frame saved ')
 
-                #img2_landmarks = draw_2d_landmarks(frame2, camera_coords2,connections)
-                # 3d좌표추출
-                #coords_3d = triangulate_3d_points(camera_coords1, camera_coords2, P1, P2, body_parts)
-                #scaled_coords_3d = scale_3d_coords(coords_3d)
-                # 3d 좌표찍기
-                #draw_3d_landmarks(ax,scaled_coords_3d,connections)
-                # Pose_check.check_stance(camera_coords1,0.1)
-                # print(f"대가리각도는: ",Pose_check.check_neck_angle(camera_coords1))
+                    # 2D 좌표 찍기
+                    img1_landmarks = draw_2d_landmarks(frame1_undistorted,front_coords1,connections,body_parts)
+                    img2_landmarks = draw_2d_landmarks(frame2_undistorted,side_coords2,connections_right,body_parts_right)
+
+                    stance = Pose_check.check_stance(front_coords1,0.1)
+                    left_head, right_head = Pose_check.check_neck_angle(front_coords1)
+                    print(f"왼쪽 대가리각도는: ",left_head)
+                    print(f"오쪽 대가리각도는: ",right_head)
+                    knee_angle = Pose_check.calculate_knee_angle(side_coords2)
+                    knee_position = Pose_check.check_knee_position(side_coords2)
+                    waist = Pose_check.check_waist_side(side_coords2)
+                    waist_check=Pose_check.check_waist_length_diff(waist,waist2)
+                    waist2 = waist
+
+                    timestamps,threshold = record_timestamp(stance,knee_angle,knee_position,waist_check, current_time,timestamps,stance_threshold,knee_angle_threshold,knee_position_threshold,waist_threshold)
+
+                    #elbow_angle = calculate_angle('left_shoulder','left_elbow','left_wrist',camera_coords1)
+                    #timestamps,threshold = record_timestamp(stance,current_time,timestamps,threshold)
+
+                    #print(elbow_angle,current_time)
+                    # if elbow_angle> 85.0 and elbow_angle<95.0:
+                    #     frame_filename = f'frame_{save_count}_{int(elbow_angle)}.jpg'
+                    #     cv2.imwrite(frame_filename, frame1)
+                    #     save_count += 1
+                    #     print(f'Frame saved ')
+
+                    #img2_landmarks = draw_2d_landmarks(frame2, camera_coords2,connections)
+                    # 3d좌표추출
+                    #coords_3d = triangulate_3d_points(camera_coords1, camera_coords2, P1, P2, body_parts)
+                    #scaled_coords_3d = scale_3d_coords(coords_3d)
+                    # 3d 좌표찍기
+                    #draw_3d_landmarks(ax,scaled_coords_3d,connections)
+                    # Pose_check.check_stance(camera_coords1,0.1)
+                    # print(f"대가리각도는: ",Pose_check.check_neck_angle(camera_coords1))
 
             #print(stance)
                 #print('elbow_angle :',calculate_angle('left_shoulder','left_elbow','left_wrist',camera_coords1))
         else:
-            print(frame_idx)
+            #print(frame_idx)
             #print(img1_landmarks)
 
             if front_coords1 is not None and side_coords2 is not None:
@@ -392,16 +419,19 @@ def main():
         #         recording = True
         #         output_file = f"elbow_120_json_test.mp4"
         #         fourcc = cv2.VideoWriter.fourcc(*'mp4v')
-        #         video_writer = cv2.VideoWriter(output_file, fourcc, 30, (frame1.shape[1], frame1.shape[0]))
-        #         print("시작")
+        #         front_video_writer = cv2.VideoWriter(front_output_file, fourcc, 30, (frame1.shape[1], frame1.shape[0]))
+        #         side_video_writer = cv2.VideoWriter(side_output_file, fourcc, 30, (frame2.shape[1], frame2.shape[0]))
+        #
         #
         # if recording:
-        #     video_writer.write(img1_landmarks)
+        #     front_video_writer.write(img1_landmarks)
+        #     side_video_writer.write(img2_landmarks)
         #
         # if cv2.waitKey(1) & 0xFF == ord('e'):  # 'e' 키를 눌러 동영상 녹화 종료
         #     if recording:
         #         recording = False
-        #         video_writer.release()
+        #         front_video_writer.release()
+        #         side_video_writer.release()
         #         print("녹화종료")
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -409,20 +439,27 @@ def main():
 
         cv2.imshow('muran1',img1_landmarks)
         cv2.imshow('muran2', img2_landmarks)
+        # front_video_writer.write(img1_landmarks)
+        # side_video_writer.write(img2_landmarks)
 
 
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
-    with open("data/elbow_120_json_test.json", 'w') as f:
-        json.dump(timestamps, f)
-    #print(timestamps)
-    video_writer.release()
+    with open("data/test.json", 'w') as f:
+        json.dump(health_warning, f,indent=5)
+    #print(health_warning)
+    # front_video_writer.release()
+    # side_video_writer.release()
     img1.release()
     #img2.release()
     cv2.destroyAllWindows()
 
+
+
+
+
+# 2D 카메라 좌표 추출 함수
 
 
 
