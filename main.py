@@ -245,13 +245,13 @@ def main():
     # P2 = np.dot(camera_matrix2, np.hstack((R, T)))
 
     # 동영상 로드해서하기 no cam
-    file_path ='data/detect_5_squart_front.mp4'
-    file_path2 = 'data/detect_5_squart.mp4'
+    file_path ='squart_side.mp4'
+    file_path2 = 'squart_front.mp4'
 
     # cam 2개 사용시
-    #img1 =cv2.VideoCapture(file_path)
-    img2 =cv2.VideoCapture(1)
-    img1 =cv2.VideoCapture(file_path2)
+    img1 =cv2.VideoCapture(file_path)
+    #img2 =cv2.VideoCapture(1)
+    img2 =cv2.VideoCapture(file_path2)
 
     frame_width = int(img1.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(img1.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -311,7 +311,7 @@ def main():
     knee_angle_threshold=False
     knee_position_threshold=False
     waist_threshold=False
-
+    waist2=None
     while True:
         ret1, frame1 = img1.read()
         ret2, frame2 = img2.read()
@@ -343,7 +343,11 @@ def main():
                     ###################################자세 체크 부분 ################################################
                     ##########여기에 김시진 횟수 스탬프 넣어봐
                     ##########(한솔) 겸사겸사 stance_threshold,knee_angle_threshold,knee_position_threshold,waist_threshold = False 하는 것도
-
+                    if frame_idx % 60 ==0:
+                        stance_threshold= False
+                        knee_angle_threshold= False
+                        knee_position_threshold= False
+                        waist_threshold = False
 
                     # ########## 정면 카메라 feature########
                     # foot_stance = Pose_check.check_stance(front_coords1)
@@ -370,7 +374,7 @@ def main():
                     img1_landmarks = draw_2d_landmarks(frame1_undistorted,front_coords1,connections,body_parts)
                     img2_landmarks = draw_2d_landmarks(frame2_undistorted,side_coords2,connections_right,body_parts_right)
 
-                    stance = Pose_check.check_stance(front_coords1,0.1)
+                    stance = Pose_check.check_stance(front_coords1,0.3)
                     left_head, right_head = Pose_check.check_neck_angle(front_coords1)
                     print(f"왼쪽 대가리각도는: ",left_head)
                     print(f"오쪽 대가리각도는: ",right_head)
@@ -380,8 +384,8 @@ def main():
                     waist_check=Pose_check.check_waist_length_diff(waist,waist2)
                     waist2 = waist
 
-                    timestamps,threshold = record_timestamp(stance,knee_angle,knee_position,waist_check, current_time,timestamps,stance_threshold,knee_angle_threshold,knee_position_threshold,waist_threshold)
-
+                    timestamps,stance_threshold,knee_angle_threshold,knee_position_threshold,waist_threshold = record_timestamp(stance,knee_angle,knee_position,waist_check, current_time,timestamps,stance_threshold,knee_angle_threshold,knee_position_threshold,waist_threshold)
+                    print(stance_threshold,knee_angle_threshold,knee_position_threshold,waist_threshold)
                     #elbow_angle = calculate_angle('left_shoulder','left_elbow','left_wrist',camera_coords1)
                     #timestamps,threshold = record_timestamp(stance,current_time,timestamps,threshold)
 

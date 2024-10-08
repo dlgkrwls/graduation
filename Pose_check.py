@@ -3,9 +3,9 @@ import numpy as np
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # 정면 캠
 # 스탠스 발 어깨 너비 벌리기
-def check_stance(coords_2d_1, tolerance=0.1):
-    left_foot = coords_2d_1['left_wrist']
-    right_foot = coords_2d_1['right_wrist']
+def check_stance(coords_2d_1, tolerance=0.3):
+    left_foot = coords_2d_1['left_ankle']
+    right_foot = coords_2d_1['right_ankle']
     left_shoulder = coords_2d_1['left_shoulder']
     right_shoulder = coords_2d_1['right_shoulder']
     
@@ -14,13 +14,8 @@ def check_stance(coords_2d_1, tolerance=0.1):
     foot_width = np.linalg.norm(left_foot - right_foot)
     
     # 어깨너비와 발너비 비교
-    stance_correct = abs(foot_width - shoulder_width) / shoulder_width <= tolerance
-    if stance_correct:
-        print("맞노")
-    else:
-        print("ㅋㅋ")
-
-    return "시발시발시발시발"
+    stance_correct = abs(foot_width - shoulder_width) / shoulder_width < tolerance
+    return stance_correct
 
 # 이건 목 각도인데 완전 지피티 쓴거
 # 너무 위나 아래를 보지 않도록 해야되는데 그게 어느정도인지 모름
@@ -66,17 +61,18 @@ def check_waist_front(coords_2d_2, tolerance=0.1):
     
     return stance_correct
 
-def check_waist_length_diff(pre_len,n_len):
-    check = abs(n_len - pre_len) / n_len <= 0.05
-    if check:
-        return "굳"
-    else:
-        return "벧"
+def check_waist_length_diff(n_len,pre_len):
+    check=1
+    if pre_len is not None:
+        check = abs(n_len - pre_len) / n_len <= 0.2
+    
+    return check
 
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # 측면 캠
 # 무릎이 앞발끝 넘는지
-def check_knee_position(coords_2d_2, side='left'):
+def check_knee_position(coords_2d_2, tolerance = 0.1, side='left'):
+    
     # 측면에서의 무릎과 발끝 비교 (x 좌표만 사용)
     if side == 'left':
         knee_x = coords_2d_2['left_knee'][0] 
@@ -88,10 +84,9 @@ def check_knee_position(coords_2d_2, side='left'):
     # 무릎이 발끝을 넘었는지 확인
     # 신체 가동범위에 따라 일부 넘을 수 있기 때문에 약간의 오차를 줘야될듯
     # if 안넘은: Good, else if 조금 넘음: 자신의 가동 범위를 확인해보셈 , else: 자세 이상함
-    if knee_x > foot_x:
-        return "무릎이 발끝 넘음."
-    else:
-        return "무릎이 발끝 안넘음 잘했음."
+    check = abs(foot_x - knee_x) / knee_x < tolerance
+    print(abs(foot_x - knee_x) / knee_x)
+    return check
     
 # 무릎 각도
 def calculate_knee_angle(coords_2d_2, side='left'):
@@ -114,20 +109,23 @@ def calculate_knee_angle(coords_2d_2, side='left'):
     angle_rad = np.arccos(cos_theta)  # 라디안 값의 각도
     angle_deg = np.degrees(angle_rad)  # 각도를 도(degree)로 변환
     
-    if angle_deg > 170:
-        print("섯네")
-    elif angle_deg > 100 and angle_deg < 170:
-        print("너무 안 앉음")
-    elif angle_deg > 70 and angle_deg < 100 :
-        print("하프 스퀏")
-    elif angle_deg > 40 and angle_deg < 70 :
-        print("스퀏")
-    elif angle_deg > 30:
-        print("너무 깊음")
-    else :
-        print("너무 안 앉음")
-    
-    return f"무릎의 굽힘 각도: {angle_deg:.2f}"
+    # if angle_deg > 170:
+    #     print("섯네")
+    # elif angle_deg > 100 and angle_deg < 170:
+    #     print("너무 안 앉음")
+    # elif angle_deg > 70 and angle_deg < 100 :
+    #     print("하프 스퀏")
+    # elif angle_deg > 40 and angle_deg < 70 :
+    #     print("스퀏")
+    # elif angle_deg > 30:
+    #     print("너무 깊음")
+    # else :
+    #     print("너무 안 앉음")
+    check = 1
+    print(angle_deg)
+    if angle_deg < 30:
+        check = 0
+    return check
 
 
 # 허리 굽힘 측정을 위한 허리 길이 계산
