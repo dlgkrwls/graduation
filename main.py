@@ -224,9 +224,8 @@ def record_timestamp(angle,time,stamp,threshold):
         threshold = False
     return stamp ,threshold
 
-def distance_shoudler_knee(a):
-    # 정면 cap에서 양 어깨 ,양 무릎 좌표받아와서 체크하기 근데 어느정도면 문제인지
-    return a
+def get_time_in_seconds(frame_count, fps):
+    return frame_count / fps
 def main():
     camera_matrix1, dist_coeffs1, camera_matrix2, dist_coeffs2 = setup_camera()
 
@@ -244,8 +243,9 @@ def main():
     file_path2 = 'data/detect_5_squart.mp4'
 
     # cam 2개 사용시
-    img1 =cv2.VideoCapture(file_path)
-    img2 =cv2.VideoCapture(file_path2)
+    #img1 =cv2.VideoCapture(file_path)
+    img2 =cv2.VideoCapture(1)
+    img1 =cv2.VideoCapture(file_path2)
 
     frame_width = int(img1.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(img1.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -330,7 +330,7 @@ def main():
                     front_coords1 = extract_camera_coords(pose_results1.pose_landmarks.landmark, frame1_undistorted)
                     side_coords2 = extract_camera_coords(pose_results2.pose_landmarks.landmark, frame2_undistorted)
                     ###################################자세 체크 부분 ################################################
-
+                    ##########여기에 김시진 횟수 스탬프 넣어봐
 
                     ########## 정면 카메라 feature########
                     foot_stance = Pose_check.check_stance(front_coords1)
