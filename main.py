@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import json
 import time
 import Pose_check
+import counting_f
 
 
 mp_pose = mp.solutions.pose
@@ -226,6 +227,67 @@ def record_timestamp(angle,time,stamp,threshold):
 
 def get_time_in_seconds(frame_count, fps):
     return frame_count / fps
+
+
+
+def count_injury(stance,knee_angle,knee_position,count_list,health_warning):
+
+    for i in range(len(count_list)):
+        frame_data={}
+        start = count_list[i]
+        end= count_list[i+1] if i+1<len(count_list) else len(stance)
+        frame_data['count']=int(i+1)
+        frame_data['start_indx']=int(start)
+        frame_data['end_indx'] = int(end)
+
+        # stance 구간 내에 0이 있으면 0으로 설정, 없으면 1
+        if 0 in stance[start:end]:
+            frame_data['stance'] = bool(0)
+        else:
+            frame_data['stance'] = bool(1)
+
+        # knee_angle 구간 내에 0이 있으면 0으로 설정, 없으면 1
+        if 0 in knee_angle[start:end]:
+            frame_data['knee_angle'] = bool(0)
+        else:
+            frame_data['knee_angle'] = bool(1)
+
+        # knee_position 구간 내에 0이 있으면 0으로 설정, 없으면 1
+        if 0 in knee_position[start:end]:
+            frame_data['knee_position'] = bool(0)
+        else:
+            frame_data['knee_position'] = bool(1)
+
+
+
+
+        # if stance[start:end].count(0) >= 20:
+        #     frame_data['stance'] = 0
+        # else:
+        #     frame_data['stance'] = 1
+        #
+        # if knee_angle[start:end].count(0) >= 20:
+        #     frame_data['knee_angle'] = 0
+        # else:
+        #     frame_data['knee_angle'] = 1
+        #
+        #     # knee_position 구간 내에 0이 20개 이상이면 0으로 설정, 그렇지 않으면 1
+        # if knee_position[start:end].count(0) >= 20:
+        #     frame_data['knee_position'] = 0
+        # else:
+        #     frame_data['knee_position'] = 1
+
+        health_warning['frames'].append(frame_data)
+
+    print(health_warning)
+
+
+
+
+
+
+
+
 def main():
     camera_matrix1, dist_coeffs1, camera_matrix2, dist_coeffs2 = setup_camera()
 
@@ -243,16 +305,17 @@ def main():
     file_path2 = 'data/detect_5_squart.mp4'
 
     # cam 2개 사용시
-    #img1 =cv2.VideoCapture(file_path)
-    img2 =cv2.VideoCapture(1)
-    img1 =cv2.VideoCapture(file_path2)
-
+    img1 =cv2.VideoCapture(file_path)
+    img2 =cv2.VideoCapture(file_path2)
     frame_width = int(img1.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(img1.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-
-
+    fps1 =img1.get(cv2.CAP_PROP_FPS)
+    fps2 = img2.get(cv2.CAP_PROP_FPS)
+    # pose model 선언#
     pose_model = setup_pose_model()
+
+
 
     ## 표시할 부분
     body_parts = ['nose', 'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
@@ -292,9 +355,11 @@ def main():
     side_video_writer = cv2.VideoWriter(side_output_file, fourcc, 30, (frame_width, frame_height))
 
     frame_idx = 0
-    angles = []
-    timestamps = []
-    save_count=0
+    stance_list=[]
+    knee_angle_list=[]
+    knee_position_list=[]
+    waist_list=[]
+    y=[]
     start_time=None
     threshold=False
     img1_landmarks=None
@@ -324,90 +389,35 @@ def main():
         pose_results1 = pose_model.process(cv2.cvtColor(frame1_undistorted, cv2.COLOR_BGR2RGB))
         pose_results2 = pose_model.process(cv2.cvtColor(frame2_undistorted, cv2.COLOR_BGR2RGB))
 
-        if frame_idx % 3 == 0: # 30프레임마다
-            if pose_results1.pose_landmarks and pose_results2.pose_landmarks:
-                    # 각 관절 좌표
-                    front_coords1 = extract_camera_coords(pose_results1.pose_landmarks.landmark, frame1_undistorted)
-                    side_coords2 = extract_camera_coords(pose_results2.pose_landmarks.landmark, frame2_undistorted)
-                    ###################################자세 체크 부분 ################################################
-                    ##########여기에 김시진 횟수 스탬프 넣어봐
+        #if frame_idx % 3 == 0: # 30프레임마다
+        if pose_results1.pose_landmarks and pose_results2.pose_landmarks:
+                # 각 관절 좌표
+                front_coords1 = extract_camera_coords(pose_results1.pose_landmarks.landmark, frame1_undistorted)
+                side_coords2 = extract_camera_coords(pose_results2.pose_landmarks.landmark, frame2_undistorted)
 
-                    ########## 정면 카메라 feature########
-                    foot_stance = Pose_check.check_stance(front_coords1)
-                    neck_warning,neck_angle = Pose_check.check_neck_angle(front_coords1)
+                y.append((front_coords1['nose'][1]))
+                ###################################자세 체크 부분 ################################################
 
-                    ########## 측면 카메라 feature#########
+                ########## 정면 카메라 feature########
+                stance_list.append(Pose_check.check_stance(front_coords1))
+                #neck_warning,neck_angle = Pose_check.check_neck_angle(front_coords1)
 
-                    knee_position = bool(Pose_check.check_knee_position(side_coords2, side='right'))
-                    knee_warning, knee_angle = Pose_check.calculate_knee_angle(side_coords2, side='right')
+                ########## 측면 카메라 feature########
+                knee_position_list.append(bool(Pose_check.check_knee_position(side_coords2, side='right')))
+                knee_angle_list.append(Pose_check.calculate_knee_angle(side_coords2, side='right'))
 
-                    if foot_stance or neck_warning or knee_position or knee_warning:
-                        frame_data = {"frame_index": int(frame_idx)}  # numpy.int를 int로 변환
-                        frame_data['Stance'] = float(foot_stance)  # 필요한 경우 float 변환
-                        frame_data['neck_angle'] = (bool(neck_warning), float(neck_angle))
-                        frame_data['knee_position'] = knee_position  # 이미 bool로 변환됨
-                        frame_data['knee_angle'] = (bool(knee_warning), float(knee_angle))
-
-                        health_warning['frames'].append(frame_data)
-
-
-
-
-                    # 2D 좌표 찍기
-                    img1_landmarks = draw_2d_landmarks(frame1_undistorted,front_coords1,connections,body_parts)
-                    img2_landmarks = draw_2d_landmarks(frame2_undistorted,side_coords2,connections_right,body_parts_right)
-
-                    #elbow_angle = calculate_angle('left_shoulder','left_elbow','left_wrist',camera_coords1)
-                    #timestamps,threshold = record_timestamp(stance,current_time,timestamps,threshold)
-
-                    #print(elbow_angle,current_time)
-                    # if elbow_angle> 85.0 and elbow_angle<95.0:
-                    #     frame_filename = f'frame_{save_count}_{int(elbow_angle)}.jpg'
-                    #     cv2.imwrite(frame_filename, frame1)
-                    #     save_count += 1
-                    #     print(f'Frame saved ')
-
-                    #img2_landmarks = draw_2d_landmarks(frame2, camera_coords2,connections)
-                    # 3d좌표추출
-                    #coords_3d = triangulate_3d_points(camera_coords1, camera_coords2, P1, P2, body_parts)
-                    #scaled_coords_3d = scale_3d_coords(coords_3d)
-                    # 3d 좌표찍기
-                    #draw_3d_landmarks(ax,scaled_coords_3d,connections)
-                    # Pose_check.check_stance(camera_coords1,0.1)
-                    # print(f"대가리각도는: ",Pose_check.check_neck_angle(camera_coords1))
-
-            #print(stance)
-                #print('elbow_angle :',calculate_angle('left_shoulder','left_elbow','left_wrist',camera_coords1))
+                # 2D 좌표 찍기
+                img1_landmarks = draw_2d_landmarks(frame1_undistorted,front_coords1,connections,body_parts)
+                img2_landmarks = draw_2d_landmarks(frame2_undistorted,side_coords2,connections_right,body_parts_right)
         else:
-            #print(frame_idx)
-            #print(img1_landmarks)
+            print(frame_idx)
 
-            if front_coords1 is not None and side_coords2 is not None:
-                # 이전 2D 좌표 사용해서 그리기
-                img1_landmarks = draw_2d_landmarks(frame1_undistorted, front_coords1, connections, body_parts)
-                img2_landmarks = draw_2d_landmarks(frame2_undistorted, side_coords2, connections_right,
-                                                   body_parts_right)
-
-        ################### s 녹화 시작 / e 녹화 종료
-        # if cv2.waitKey(1) & 0xFF == ord('s'):  # 's' 키를 눌러 동영상 녹화 시작
-        #     if not recording:
-        #         recording = True
-        #         output_file = f"elbow_120_json_test.mp4"
-        #         fourcc = cv2.VideoWriter.fourcc(*'mp4v')
-        #         front_video_writer = cv2.VideoWriter(front_output_file, fourcc, 30, (frame1.shape[1], frame1.shape[0]))
-        #         side_video_writer = cv2.VideoWriter(side_output_file, fourcc, 30, (frame2.shape[1], frame2.shape[0]))
-        #
-        #
-        # if recording:
-        #     front_video_writer.write(img1_landmarks)
-        #     side_video_writer.write(img2_landmarks)
-        #
-        # if cv2.waitKey(1) & 0xFF == ord('e'):  # 'e' 키를 눌러 동영상 녹화 종료
-        #     if recording:
-        #         recording = False
-        #         front_video_writer.release()
-        #         side_video_writer.release()
-        #         print("녹화종료")
+    #else:
+        if front_coords1 is not None and side_coords2 is not None:
+            # 이전 2D 좌표 사용해서 그리기
+            img1_landmarks = draw_2d_landmarks(frame1_undistorted, front_coords1, connections, body_parts)
+            img2_landmarks = draw_2d_landmarks(frame2_undistorted, side_coords2, connections_right,
+                                               body_parts_right)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -416,28 +426,30 @@ def main():
         cv2.imshow('muran2', img2_landmarks)
         # front_video_writer.write(img1_landmarks)
         # side_video_writer.write(img2_landmarks)
+    ## ########################## ###################################################### 후처리 부분
+    count_list,squart_count = counting_f.squart_count(y)
+    # print(f'stancelen{len(stance_list)}  knee_position_list{len(knee_position_list)}  knee_angle_list{len(knee_angle_list)}  stance_list{len(stance_list)} 실제 frame수 {frame_idx},')
+    # print(f'횟수{squart_count}, 횟수 프레임 idx{count_list}')
+    print(knee_position_list)
+    for i in range(len(count_list)):
+        print(get_time_in_seconds(count_list[i],fps1))
+    # 스쿼트 횟수별 부상여부 감지
+    count_injury(stance_list, knee_position_list, knee_angle_list, count_list, health_warning)
 
-
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
     with open("data/test.json", 'w') as f:
         json.dump(health_warning, f,indent=5)
     #print(health_warning)
     # front_video_writer.release()
     # side_video_writer.release()
     img1.release()
-    #img2.release()
+    img2.release()
     cv2.destroyAllWindows()
 
 
-
-
-
-# 2D 카메라 좌표 추출 함수
+    return health_warning
 
 
 
 if __name__ == "__main__":
     plt.ion()
-    main()
+    json_data =main()
