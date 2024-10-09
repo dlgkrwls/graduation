@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import json
 import time
 import Pose_check
-
+import dadad
 
 mp_pose = mp.solutions.pose
 # 카메라 및 MediaPipe 설정
@@ -212,11 +212,12 @@ def extract_camera_coords(landmarks, frame):
     return camera_coords
 # 주 루프
 
-
 # 수정이 필요함 함수 이함수안에 우리가 봐야할 check포인트 넣고 해줘야함
+# Input = Pose Analysis -> Prerprocessed Data
+# Output = Stamp(time, problem), 부상 위치(T/F)
 def record_timestamp(stance,knee_angle,knee_position,waist_check,time,stamp,stance_threshold,knee_angle_threshold,knee_position_threshold,waist_threshold):
     if not (stance and knee_angle and knee_position and waist_check):  # 하나라도 0이면
-        if stance == 0:
+        if stance == 0 and stance_threshold == False:
             stamp.append((time, "stance"))
             stance_threshold = True
         if knee_angle == 0:
@@ -312,6 +313,10 @@ def main():
     knee_position_threshold=False
     waist_threshold=False
     waist2=None
+    nose_count_list=[]
+    count_frame = []
+    count = 0
+
     while True:
         ret1, frame1 = img1.read()
         ret2, frame2 = img2.read()
@@ -367,8 +372,8 @@ def main():
 
                     #     health_warning['frames'].append(frame_data)
 
-
-
+                    # 횟수 체크용 코 좌표 저장
+                    nose_count_list.append(front_coords1["nose"][1])
 
                     # 2D 좌표 찍기
                     img1_landmarks = draw_2d_landmarks(frame1_undistorted,front_coords1,connections,body_parts)
@@ -376,7 +381,7 @@ def main():
 
                     stance = Pose_check.check_stance(front_coords1,0.3)
                     left_head, right_head = Pose_check.check_neck_angle(front_coords1)
-                    print(f"왼쪽 대가리각도는: ",left_head)
+                    print(f"왼쪽 대가리각도는: {left_head}")
                     print(f"오쪽 대가리각도는: ",right_head)
                     knee_angle = Pose_check.calculate_knee_angle(side_coords2)
                     knee_position = Pose_check.check_knee_position(side_coords2)
@@ -439,6 +444,9 @@ def main():
         #         print("녹화종료")
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
+            count_frame, count = dadad.squart_count(nose_count_list)
+            print(count_frame)
+            print(count)
             break
 
         cv2.imshow('muran1',img1_landmarks)
@@ -446,10 +454,6 @@ def main():
         # front_video_writer.write(img1_landmarks)
         # side_video_writer.write(img2_landmarks)
 
-
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
     with open("data/test.json", 'w') as f:
         json.dump(health_warning, f,indent=5)
     #print(health_warning)

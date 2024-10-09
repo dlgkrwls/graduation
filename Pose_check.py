@@ -1,9 +1,12 @@
 import numpy as np
 
+
+# 양 쪽 무릎 사이 거리
+
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # 정면 캠
 # 스탠스 발 어깨 너비 벌리기
-def check_stance(coords_2d_1, tolerance=0.3):
+def check_stance(coords_2d_1, tolerance=0.1):
     left_foot = coords_2d_1['left_ankle']
     right_foot = coords_2d_1['right_ankle']
     left_shoulder = coords_2d_1['left_shoulder']
@@ -16,6 +19,15 @@ def check_stance(coords_2d_1, tolerance=0.3):
     # 어깨너비와 발너비 비교
     stance_correct = abs(foot_width - shoulder_width) / shoulder_width < tolerance
     return stance_correct
+
+def check_knee_stance(coords_2d_1, tolerance=0.3):
+    left_knee = coords_2d_1['left_knee']
+    right_knee = coords_2d_1['right_knee']
+    
+    shoulder_width = np.linalg.norm(left_knee - right_knee)
+    
+    # 어깨너비와 발너비 비교
+    return shoulder_width
 
 # 이건 목 각도인데 완전 지피티 쓴거
 # 너무 위나 아래를 보지 않도록 해야되는데 그게 어느정도인지 모름
@@ -85,7 +97,7 @@ def check_knee_position(coords_2d_2, tolerance = 0.1, side='left'):
     # 신체 가동범위에 따라 일부 넘을 수 있기 때문에 약간의 오차를 줘야될듯
     # if 안넘은: Good, else if 조금 넘음: 자신의 가동 범위를 확인해보셈 , else: 자세 이상함
     check = abs(foot_x - knee_x) / knee_x < tolerance
-    print(abs(foot_x - knee_x) / knee_x)
+    #print(abs(foot_x - knee_x) / knee_x)
     return check
     
 # 무릎 각도
@@ -121,6 +133,7 @@ def calculate_knee_angle(coords_2d_2, side='left'):
     #     print("너무 깊음")
     # else :
     #     print("너무 안 앉음")
+
     check = 1
     print(angle_deg)
     if angle_deg < 30:
