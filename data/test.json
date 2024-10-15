@@ -1,3 +1,36 @@
 {
-     "frames": []
+     "frames": [
+          {
+               "count": 1,
+               "start_indx": 59,
+               "end_indx": 142,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": true
+          },
+          {
+               "count": 2,
+               "start_indx": 142,
+               "end_indx": 222,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": true
+          },
+          {
+               "count": 3,
+               "start_indx": 222,
+               "end_indx": 332,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": true
+          },
+          {
+               "count": 4,
+               "start_indx": 332,
+               "end_indx": 362,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": true
+          }
+     ]
 }

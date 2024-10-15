@@ -4,8 +4,8 @@ import numpy as np
 import json
 import util
 import Pose_check
-<<<<<<< HEAD
-import dadad
+import counting_f
+import matplotlib.pyplot as plt
 
 mp_pose = mp.solutions.pose
 # 카메라 및 MediaPipe 설정
@@ -246,8 +246,8 @@ def main():
     # P2 = np.dot(camera_matrix2, np.hstack((R, T)))
 
     # 동영상 로드해서하기 no cam
-    file_path ='squart_side.mp4'
-    file_path2 = 'squart_front.mp4'
+    file_path ='s_front.mp4'
+    file_path2 = 's_side.mp4'
 
     # cam 2개 사용시
     img1 =cv2.VideoCapture(file_path)
@@ -444,13 +444,14 @@ def main():
         #         print("녹화종료")
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            count_frame, count = dadad.squart_count(nose_count_list)
+            count_frame, count = counting_f.squart_count(nose_count_list)
             print(count_frame)
             print(count)
             break
 
-        cv2.imshow('muran1',img1_landmarks)
-        cv2.imshow('muran2', img2_landmarks)
+        #cv2.imshow('muran1',img1_landmarks)
+        #cv2.imshow('muran2', img2_landmarks)
+
         # front_video_writer.write(img1_landmarks)
         # side_video_writer.write(img2_landmarks)
 
@@ -468,9 +469,6 @@ def main():
 
 
 # 2D 카메라 좌표 추출 함수
-
-=======
-import counting_f
 
 
 class PoseEstimator:
@@ -517,6 +515,7 @@ class PoseEstimator:
         frame_idx = 0
         stance_list = []
         knee_angle_list = []
+        knee_angle = []
         knee_position_list = []
         y = []
         start_time = None
@@ -555,7 +554,9 @@ class PoseEstimator:
                 # 부상위험요인
                 stance_list.append(Pose_check.check_stance(front_coords1))
                 knee_position_list.append(bool(Pose_check.check_knee_position(side_coords2, side='right')))
-                knee_angle_list.append(Pose_check.calculate_knee_angle(side_coords2, side='right'))
+                knee_check, knee_angle_deg = Pose_check.calculate_knee_angle(side_coords2, side='right') 
+                knee_angle_list.append(knee_check)
+                knee_angle.append(knee_angle_deg)
                 # 이미지 그리기 추후 3D 있으면 여기서 삼각측량
                 img1_landmarks = util.draw_2d_landmarks(frame1_undistorted, front_coords1, connections, body_parts)
                 img2_landmarks = util.draw_2d_landmarks(frame2_undistorted, side_coords2, connections_right, body_parts)
@@ -564,8 +565,8 @@ class PoseEstimator:
                 img1_landmarks = util.draw_2d_landmarks(frame1_undistorted, front_coords1, connections, body_parts)
                 img2_landmarks = util.draw_2d_landmarks(frame2_undistorted, side_coords2, connections_right, body_parts)
             # 저장 및 imshow
-            cv2.imshow('front_cam',img1_landmarks)
-            cv2.imshow('side_cam',img2_landmarks)
+            #cv2.imshow('front_cam',img1_landmarks)
+            #cv2.imshow('side_cam',img2_landmarks)
             self.front_video_writer.write(img1_landmarks)
             self.side_video_writer.write(img2_landmarks)
 
@@ -573,7 +574,7 @@ class PoseEstimator:
                 break
 
         # 후처리 동영상 다 돌고 부상판단
-        count_list, squart_count = counting_f.squart_count(y)
+        count_list, squart_count = counting_f.squart_count(y,knee_angle)
         util.count_injury(stance_list, knee_position_list, knee_angle_list, count_list, self.health_warning)
 
         with open("data/test.json", 'w') as f:
@@ -586,14 +587,13 @@ class PoseEstimator:
         cv2.destroyAllWindows()
 
         return self.health_warning
->>>>>>> hak
 
 
 if __name__ == "__main__":
-    front_video = 'data/detect_5_squart_front.mp4'
-    side_video = 'data/detect_5_squart.mp4'
-    output_front_file = 'data/detect_5_squart_front_class.mp4'
-    output_side_file = 'data/detect_5_squart_class.mp4'
+    front_video = 's_front.mp4'
+    side_video = 's_side.mp4'
+    output_front_file = 'data/squart_front_class.mp4'
+    output_side_file = 'data/squart_class.mp4'
 
     # 클래스 초기화로 파일위치, 저장위치 매개변수로 받음
     estimator = PoseEstimator(front_video, side_video, output_front_file, output_side_file)
