@@ -277,33 +277,223 @@ def progress(value, max=100):
           {value}
       </progress>
   """.format(value=value, max=max))
+#####################################################
+MIN_CROP_KEYPOINT_SCORE = 0.2
 
+def init_crop_region(image_height, image_width):
+  """Defines the default crop region.
 
-  # Load the input image.
-image_path = 'data/full1.jpg'
-image = tf.io.read_file(image_path)
-image = tf.image.decode_jpeg(image)
-# Resize and pad the image to keep the aspect ratio and fit the expected size.
-input_image = tf.expand_dims(image, axis=0)
-input_image = tf.image.resize_with_pad(input_image, input_size, input_size)
+  The function provides the initial crop region (pads the full image from both
+  sides to make it a square image) when the algorithm cannot reliably determine
+  the crop region from the previous frame.
+  """
+  if image_width > image_height:
+    box_height = image_width / image_height
+    box_width = 1.0
+    y_min = (image_height / 2 - image_width / 2) / image_height
+    x_min = 0.0
+  else:
+    box_height = 1.0
+    box_width = image_height / image_width
+    y_min = 0.0
+    x_min = (image_width / 2 - image_height / 2) / image_width
 
-# Run model inference.
-keypoints_with_scores = movenet(input_image)
+  return {
+    'y_min': y_min,
+    'x_min': x_min,
+    'y_max': y_min + box_height,
+    'x_max': x_min + box_width,
+    'height': box_height,
+    'width': box_width
+  }
 
-# Visualize the predictions with image.
-display_image = tf.expand_dims(image, axis=0)
-display_image = tf.cast(tf.image.resize_with_pad(
-    display_image, 1280, 1280), dtype=tf.int32)
-output_overlay = draw_prediction_on_image(
-    np.squeeze(display_image.numpy(), axis=0), keypoints_with_scores)
+def torso_visible(keypoints):
+  """Checks whether there are enough torso keypoints.
 
-output_overlay_bgr = cv2.cvtColor(output_overlay, cv2.COLOR_RGB2BGR)
+  This function checks whether the model is confident at predicting one of the
+  shoulders/hips which is required to determine a good crop region.
+  """
+  return ((keypoints[0, 0, KEYPOINT_DICT['left_hip'], 2] >
+           MIN_CROP_KEYPOINT_SCORE or
+          keypoints[0, 0, KEYPOINT_DICT['right_hip'], 2] >
+           MIN_CROP_KEYPOINT_SCORE) and
+          (keypoints[0, 0, KEYPOINT_DICT['left_shoulder'], 2] >
+           MIN_CROP_KEYPOINT_SCORE or
+          keypoints[0, 0, KEYPOINT_DICT['right_shoulder'], 2] >
+           MIN_CROP_KEYPOINT_SCORE))
 
-# 이미지 저장
-output_path = 'output_image.jpg'
+def determine_torso_and_body_range(
+    keypoints, target_keypoints, center_y, center_x):
+  """Calculates the maximum distance from each keypoints to the center location.
 
-cv2.imwrite(output_path, output_overlay_bgr)
-plt.figure(figsize=(5, 5))
-plt.imshow(output_overlay)
-_ = plt.axis('off')
+  The function returns the maximum distances from the two sets of keypoints:
+  full 17 keypoints and 4 torso keypoints. The returned information will be
+  used to determine the crop size. See determineCropRegion for more detail.
+  """
+  torso_joints = ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip']
+  max_torso_yrange = 0.0
+  max_torso_xrange = 0.0
+  for joint in torso_joints:
+    dist_y = abs(center_y - target_keypoints[joint][0])
+    dist_x = abs(center_x - target_keypoints[joint][1])
+    if dist_y > max_torso_yrange:
+      max_torso_yrange = dist_y
+    if dist_x > max_torso_xrange:
+      max_torso_xrange = dist_x
 
+  max_body_yrange = 0.0
+  max_body_xrange = 0.0
+  for joint in KEYPOINT_DICT.keys():
+    if keypoints[0, 0, KEYPOINT_DICT[joint], 2] < MIN_CROP_KEYPOINT_SCORE:
+      continue
+    dist_y = abs(center_y - target_keypoints[joint][0]);
+    dist_x = abs(center_x - target_keypoints[joint][1]);
+    if dist_y > max_body_yrange:
+      max_body_yrange = dist_y
+
+    if dist_x > max_body_xrange:
+      max_body_xrange = dist_x
+
+  return [max_torso_yrange, max_torso_xrange, max_body_yrange, max_body_xrange]
+
+def determine_crop_region(
+      keypoints, image_height,
+      image_width):
+  """Determines the region to crop the image for the model to run inference on.
+
+  The algorithm uses the detected joints from the previous frame to estimate
+  the square region that encloses the full body of the target person and
+  centers at the midpoint of two hip joints. The crop size is determined by
+  the distances between each joints and the center point.
+  When the model is not confident with the four torso joint predictions, the
+  function returns a default crop which is the full image padded to square.
+  """
+  target_keypoints = {}
+  for joint in KEYPOINT_DICT.keys():
+    target_keypoints[joint] = [
+      keypoints[0, 0, KEYPOINT_DICT[joint], 0] * image_height,
+      keypoints[0, 0, KEYPOINT_DICT[joint], 1] * image_width
+    ]
+
+  if torso_visible(keypoints):
+    center_y = (target_keypoints['left_hip'][0] +
+                target_keypoints['right_hip'][0]) / 2;
+    center_x = (target_keypoints['left_hip'][1] +
+                target_keypoints['right_hip'][1]) / 2;
+
+    (max_torso_yrange, max_torso_xrange,
+      max_body_yrange, max_body_xrange) = determine_torso_and_body_range(
+          keypoints, target_keypoints, center_y, center_x)
+
+    crop_length_half = np.amax(
+        [max_torso_xrange * 1.9, max_torso_yrange * 1.9,
+          max_body_yrange * 1.2, max_body_xrange * 1.2])
+
+    tmp = np.array(
+        [center_x, image_width - center_x, center_y, image_height - center_y])
+    crop_length_half = np.amin(
+        [crop_length_half, np.amax(tmp)]);
+
+    crop_corner = [center_y - crop_length_half, center_x - crop_length_half];
+
+    if crop_length_half > max(image_width, image_height) / 2:
+      return init_crop_region(image_height, image_width)
+    else:
+      crop_length = crop_length_half * 2;
+      return {
+        'y_min': crop_corner[0] / image_height,
+        'x_min': crop_corner[1] / image_width,
+        'y_max': (crop_corner[0] + crop_length) / image_height,
+        'x_max': (crop_corner[1] + crop_length) / image_width,
+        'height': (crop_corner[0] + crop_length) / image_height -
+            crop_corner[0] / image_height,
+        'width': (crop_corner[1] + crop_length) / image_width -
+            crop_corner[1] / image_width
+      }
+  else:
+    return init_crop_region(image_height, image_width)
+
+def crop_and_resize(image, crop_region, crop_size):
+  """Crops and resize the image to prepare for the model input."""
+  boxes=[[crop_region['y_min'], crop_region['x_min'],
+          crop_region['y_max'], crop_region['x_max']]]
+  output_image = tf.image.crop_and_resize(
+      image, box_indices=[0], boxes=boxes, crop_size=crop_size)
+  return output_image
+
+def run_inference(movenet, image, crop_region, crop_size):
+  """Runs model inferece on the cropped region.
+
+  The function runs the model inference on the cropped region and updates the
+  model output to the original image coordinate system.
+  """
+  image_height, image_width, _ = image.shape
+  input_image = crop_and_resize(
+    tf.expand_dims(image, axis=0), crop_region, crop_size=crop_size)
+  # Run model inference.
+  keypoints_with_scores = movenet(input_image)
+  # Update the coordinates.
+  for idx in range(17):
+    keypoints_with_scores[0, 0, idx, 0] = (
+        crop_region['y_min'] * image_height +
+        crop_region['height'] * image_height *
+        keypoints_with_scores[0, 0, idx, 0]) / image_height
+    keypoints_with_scores[0, 0, idx, 1] = (
+        crop_region['x_min'] * image_width +
+        crop_region['width'] * image_width *
+        keypoints_with_scores[0, 0, idx, 1]) / image_width
+  return keypoints_with_scores
+###############################################################################3
+import cv2
+import numpy as np
+import tensorflow as tf
+
+# Load the input MP4 video
+input_path = 'data/detect_5_squart.mp4'
+cap = cv2.VideoCapture(input_path)
+
+# Get video properties
+fps = int(cap.get(cv2.CAP_PROP_FPS))
+frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+num_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+# Initialize crop region based on frame dimensions
+crop_region = init_crop_region(frame_height, frame_width)
+
+# Set up the MP4 writer for output
+output_path = 'output_side.mp4'
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+output_video = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
+
+# Process each frame
+for frame_idx in range(num_frames):
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    # Convert frame to RGB for TensorFlow processing
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    frame_rgb = tf.convert_to_tensor(frame_rgb, dtype=tf.uint8)
+
+    # Run inference and draw keypoints
+    keypoints_with_scores = run_inference(
+        movenet, frame_rgb, crop_region, crop_size=[input_size, input_size]
+    )
+    print(keypoints_with_scores)
+    output_frame = draw_prediction_on_image(
+        frame_rgb.numpy(), keypoints_with_scores, crop_region=None,
+        close_figure=True, output_image_height=frame_height
+    )
+
+    # Convert back to BGR for OpenCV and write to output video
+    output_frame = cv2.cvtColor(output_frame, cv2.COLOR_RGB2BGR)
+    output_video.write(output_frame)
+
+    # Update crop region for the next frame
+    crop_region = determine_crop_region(keypoints_with_scores, frame_height, frame_width)
+
+# Release resources
+cap.release()
+output_video.release()
+print("MP4 video saved as:", output_path)
