@@ -22,7 +22,62 @@ def setup_pose_model():
 # 왜곡 보정 이미지 반환
 def undistort_image(frame, camera_matrix, dist_coeffs):
     return cv2.undistort(frame, camera_matrix, dist_coeffs)
+def apply_smoothing(pose_data, model, issave=False, save_path=None):
+    # Convert pose data to a numpy array and ensure it has the correct shape
+    pose_data = np.array(pose_data)
+    input_data = pose_data.reshape(len(pose_data), -1) if pose_data.ndim == 3 else pose_data
 
+    smoothed_data = []
+    window_size = model.window_size
+
+    # Process data in sliding windows
+    for start in range(0, input_data.shape[0] - window_size + 1, window_size):
+        end = start + window_size
+        window_data = input_data[start:end]
+        input_tensor = torch.tensor(window_data, dtype=torch.float32).unsqueeze(0).permute(0, 2, 1)
+
+        # Use the model to smooth the data
+        with torch.no_grad():
+            smoothed_output = model(input_tensor).squeeze(0).permute(1, 0).numpy()
+            smoothed_data.append(smoothed_output)
+
+    # Concatenate all smoothed windows and reshape to the original format
+    smoothed_data = np.concatenate(smoothed_data, axis=0).reshape(-1, 17, 2)
+
+    if issave and save_path:
+        np.save(save_path, smoothed_data)
+
+    return smoothed_data
+
+
+def convert_smoothed_to_dict(smoothed_coords, frame_shape):
+    """Converts smoothed coordinates to a dictionary format for easy access."""
+    return {
+        "nose": smoothed_coords[0] * frame_shape,
+        "left_shoulder": smoothed_coords[1] * frame_shape,
+        "right_shoulder": smoothed_coords[2] * frame_shape,
+        "left_elbow": smoothed_coords[3] * frame_shape,
+        "right_elbow": smoothed_coords[4] * frame_shape,
+        "left_wrist": smoothed_coords[5] * frame_shape,
+        "right_wrist": smoothed_coords[6] * frame_shape,
+        "left_hip": smoothed_coords[7] * frame_shape,
+        "right_hip": smoothed_coords[8] * frame_shape,
+        "left_knee": smoothed_coords[9] * frame_shape,
+        "right_knee": smoothed_coords[10] * frame_shape,
+        "left_ankle": smoothed_coords[11] * frame_shape,
+        "right_ankle": smoothed_coords[12] * frame_shape,
+        "left_heel": smoothed_coords[13] * frame_shape,
+        "right_heel": smoothed_coords[14] * frame_shape,
+        "left_foot": smoothed_coords[15] * frame_shape,
+        "right_foot": smoothed_coords[16] * frame_shape
+    }
+
+
+def extract_coco_format(results, coco_indices):
+    """Extracts landmarks in COCO format."""
+    landmarks = results.pose_landmarks.landmark
+    xy_coords = [(landmarks[idx].x, landmarks[idx].y) for idx in coco_indices]
+    return xy_coords
 
 # Triangulation을 통한 3D 좌표 계산
 def triangulate_3d_points(camera_coords1, camera_coords2, P1, P2, body_parts):
