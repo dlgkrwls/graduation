@@ -77,22 +77,22 @@ def convert_smoothed_to_dict(smoothed_coords, frame_shape):
     """Converts smoothed coordinates to a dictionary format for easy access."""
     return {
         "nose": smoothed_coords[0] * frame_shape,
-        "left_shoulder": smoothed_coords[1] * frame_shape,
-        "right_shoulder": smoothed_coords[2] * frame_shape,
-        "left_elbow": smoothed_coords[3] * frame_shape,
-        "right_elbow": smoothed_coords[4] * frame_shape,
-        "left_wrist": smoothed_coords[5] * frame_shape,
-        "right_wrist": smoothed_coords[6] * frame_shape,
-        "left_hip": smoothed_coords[7] * frame_shape,
-        "right_hip": smoothed_coords[8] * frame_shape,
-        "left_knee": smoothed_coords[9] * frame_shape,
-        "right_knee": smoothed_coords[10] * frame_shape,
-        "left_ankle": smoothed_coords[11] * frame_shape,
-        "right_ankle": smoothed_coords[12] * frame_shape,
-        "left_heel": smoothed_coords[13] * frame_shape,
-        "right_heel": smoothed_coords[14] * frame_shape,
-        "left_foot": smoothed_coords[15] * frame_shape,
-        "right_foot": smoothed_coords[16] * frame_shape
+        "left_eye": smoothed_coords[1] * frame_shape,
+        "right_eye": smoothed_coords[2] * frame_shape,
+        "left_ear": smoothed_coords[3] * frame_shape,
+        "right_ear": smoothed_coords[4] * frame_shape,
+        "left_shoulder": smoothed_coords[5] * frame_shape,
+        "right_shoulder": smoothed_coords[6] * frame_shape,
+        "left_elbow": smoothed_coords[7] * frame_shape,
+        "right_elbow": smoothed_coords[8] * frame_shape,
+        "left_wrist": smoothed_coords[9] * frame_shape,
+        "right_wrist": smoothed_coords[10] * frame_shape,
+        "left_hip": smoothed_coords[11] * frame_shape,
+        "right_hip": smoothed_coords[12] * frame_shape,
+        "left_knee": smoothed_coords[13] * frame_shape,
+        "right_knee": smoothed_coords[14] * frame_shape,
+        "left_ankle": smoothed_coords[15] * frame_shape,
+        "right_ankle": smoothed_coords[16] * frame_shape
     }
 
 
@@ -103,12 +103,12 @@ def extract_coco_format(results, coco_indices):
     return xy_coords
 
 # Triangulation을 통한 3D 좌표 계산
-def triangulate_3d_points(camera_coords1, camera_coords2, P1, P2, body_parts):
+def triangulate_3d_points(camera_coords1, camera_coords2, P1, P2):
     coords_3d = {}
-    for part in body_parts:
-        points_4d = cv2.triangulatePoints(P1, P2, camera_coords1[part].reshape(2, 1),
-                                          camera_coords2[part].reshape(2, 1))
-        coords_3d[part] = (points_4d[:3] / points_4d[3])  # homogeneous coordinates to 3D
+    for i in len(camera_coords1):
+        points_4d = cv2.triangulatePoints(P1, P2, camera_coords1[i].reshape(2, 1),
+                                          camera_coords2[i].reshape(2, 1))
+        coords_3d[i] = (points_4d[:3] / points_4d[3])  # homogeneous coordinates to 3D
     return coords_3d
 
 
@@ -194,21 +194,26 @@ def draw_2d_landmarks(frame,coords,connections,body_part):
 
     return frame
 # 3d 좌표찍기
-def draw_3d_landmarks(ax,coords,connections):
+def draw_3d_landmarks(ax,coord_3d):
     ax.clear()
     # 좌표찍기
-    for part,coord in coords.items():
-        ax.scatter(coord[0],coord[1],coord[2],)
 
-    for connection in connections:
-        start, end = connection
-        start_coord = coords[start].flatten()
-        end_coord = coords[end].flatten()
-        ax.plot([start_coord[0], end_coord[0]],
-                [start_coord[1], end_coord[1]],
-                [start_coord[2], end_coord[2]],
-                color='gray')
+    # for i in range(len(SKELETON)):
+    #     kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
+    #     x_a, y_a = keypoints[kpt_a][0],keypoints[kpt_a][1]
+    #     x_b, y_b = keypoints[kpt_b][0],keypoints[kpt_b][1] 
+    #     cv2.circle(img, (int(x_a), int(y_a)), 6, (255, 0, 0), -1)
+    #     cv2.circle(img, (int(x_b), int(y_b)), 6, (255, 0, 0), -1)
+    #     cv2.line(img, (int(x_a), int(y_a)), (int(x_b), int(y_b)), (0, 255, 0), 2)
 
+    i=0
+    for coord in coord_3d:
+        ax.scatter(coord[0],coord[1],coord[2])
+        kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
+        x_a, y_a, z_a = coord[kpt_a][0],coord[kpt_a][1],coord[kpt_a][2]
+        x_b, y_b, z_b = coord[kpt_b][0],coord[kpt_b][1],coord[kpt_b][2]
+        ax.plot([x_a,x_b],[y_a,y_b],[z_a,z_b],color='gray')
+        i+=1
     plt.draw()
     plt.pause(0.01)
 

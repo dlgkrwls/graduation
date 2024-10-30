@@ -137,11 +137,6 @@ class PoseEstimator:
                 y.append(front_coords[0][1])
 
 
-
-
-        #################후처리 시작
-        ##### 스무딩적용
-
         front_smoothed_data = util.apply_smoothing(front_pose_data, self.smooth_model, False,'front_smoothed_pose_data.npy')
         side_smoothed_data = util.apply_smoothing(side_pose_data, self.smooth_model, False,'side_smoothed_pose_data.npy')
 
@@ -183,9 +178,13 @@ class PoseEstimator:
             ### 한솔 Test draw
             frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
             frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
+            coords_3d=util.triangulate_3d_points(front_smoothed_data[frame_idx],side_smoothed_data[frame_idx],P1,P2)
+            scale_3d_coords = util.scale_3d_coords(coords_3d)
+            util.draw_3d_landmarks(ax,scale_3d_coords)
 
             cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
             cv2.imshow("Side Camera - Smoothed", frame2_smoothed)
+
 
             self.front_video_writer.write(frame1_smoothed)
             self.side_video_writer.write(frame2_smoothed)
