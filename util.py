@@ -37,7 +37,14 @@ def setup_camera():
     dist_coeffs2 = np.array([0.05938374, -0.05269976, 0.00271985, -0.00217994, -0.07622173])
     return camera_matrix1, dist_coeffs1, camera_matrix2, dist_coeffs2
 
-
+def P1P2(camera_matrix1,camera_matrix2):
+    R = np.array([[0.88033205, -0.0700383, -0.46915894],
+                  [0.1120291, 0.99175901, 0.06215738],
+                  [0.46093921, -0.10727859, 0.88092358]])
+    T = np.array([[10.97330599], [-0.43874374], [0.15791984]])
+    P1 = np.dot(camera_matrix1, np.hstack((np.eye(3), np.zeros((3, 1)))))
+    P2 = np.dot(camera_matrix2, np.hstack((R, T)))
+    return P1,P2
 
 def setup_pose_model():
     return mp.solutions.pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
@@ -95,6 +102,9 @@ def convert_smoothed_to_dict(smoothed_coords, frame_shape):
         "right_ankle": smoothed_coords[16] * frame_shape
     }
 
+def abs_xy(coord,frame_shape):
+    abs_coord=coord*frame_shape
+    return abs_coord
 
 def extract_coco_format(results, coco_indices):
     """Extracts landmarks in COCO format."""
@@ -104,11 +114,11 @@ def extract_coco_format(results, coco_indices):
 
 # Triangulation을 통한 3D 좌표 계산
 def triangulate_3d_points(camera_coords1, camera_coords2, P1, P2):
-    coords_3d = {}
-    for i in len(camera_coords1):
+    coords_3d = []
+    for i in range(len(camera_coords1)):
         points_4d = cv2.triangulatePoints(P1, P2, camera_coords1[i].reshape(2, 1),
                                           camera_coords2[i].reshape(2, 1))
-        coords_3d[i] = (points_4d[:3] / points_4d[3])  # homogeneous coordinates to 3D
+        coords_3d.append(points_4d[:3] / points_4d[3])  # homogeneous coordinates to 3D
     return coords_3d
 
 
@@ -117,24 +127,47 @@ def scale_value(value, min_value, max_value):
     return (value - min_value) / (max_value - min_value) if max_value - min_value != 0 else 0
 
 
+# 스케일링 함수 (가정)
+def scale_value(value, min_value, max_value):
+    return float((value - min_value) / (max_value - min_value)) if max_value > min_value else 0
+
 # 스케일링된 3D 좌표 반환
 def scale_3d_coords(coords_3d):
-    x_coords = np.array([coord[0][0] for coord in coords_3d.values()])
-    y_coords = np.array([coord[1][0] for coord in coords_3d.values()])
-    z_coords = np.array([coord[2][0] for coord in coords_3d.values()])
+    x_coords = np.array([coord[0] for coord in coords_3d])
+    y_coords = np.array([coord[1] for coord in coords_3d])
+    z_coords = np.array([coord[2] for coord in coords_3d])
 
     x_min, x_max = x_coords.min(), x_coords.max()
     y_min, y_max = y_coords.min(), y_coords.max()
     z_min, z_max = z_coords.min(), z_coords.max()
 
-    scaled_coords_3d = {}
-    for part, coord in coords_3d.items():
-        scaled_x = scale_value(coord[0][0], x_min, x_max)
-        scaled_y = scale_value(coord[1][0], y_min, y_max)
-        scaled_z = scale_value(coord[2][0], z_min, z_max)
-        scaled_coords_3d[part] = np.array([[scaled_x], [scaled_y], [scaled_z]], dtype=float)
-
+    scaled_coords_3d = []
+    for coord in coords_3d:
+        scaled_x = scale_value(coord[0], x_min, x_max)
+        scaled_y = scale_value(coord[1], y_min, y_max)
+        scaled_z = scale_value(coord[2], z_min, z_max)
+        scaled_coords_3d.append((scaled_x, scaled_y, scaled_z))  # 튜플 형태로 추가
+        print(scaled_coords_3d)
     return scaled_coords_3d
+
+# # 스케일링된 3D 좌표 반환
+# def scale_3d_coords(coords_3d):
+#     x_coords = np.array([coord[0][0] for coord in coords_3d.values()])
+#     y_coords = np.array([coord[1][0] for coord in coords_3d.values()])
+#     z_coords = np.array([coord[2][0] for coord in coords_3d.values()])
+
+#     x_min, x_max = x_coords.min(), x_coords.max()
+#     y_min, y_max = y_coords.min(), y_coords.max()
+#     z_min, z_max = z_coords.min(), z_coords.max()
+
+#     scaled_coords_3d = {}
+#     for part, coord in coords_3d.items():
+#         scaled_x = scale_value(coord[0][0], x_min, x_max)
+#         scaled_y = scale_value(coord[1][0], y_min, y_max)
+#         scaled_z = scale_value(coord[2][0], z_min, z_max)
+#         scaled_coords_3d[part] = np.array([[scaled_x], [scaled_y], [scaled_z]], dtype=float)
+
+#     return scaled_coords_3d
 
 
 # joint 각도 추출 이미지 영상 y축이 반대이기때문에 180.0 - angle해서 반환
@@ -169,7 +202,7 @@ def draw_pose(keypoints,img,frame_shape):
     """
     keypoints= keypoints * frame_shape
     assert keypoints.shape == (NUM_KPTS,2)
-
+    print(keypoints)
     for i in range(len(SKELETON)):
         kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
         x_a, y_a = keypoints[kpt_a][0],keypoints[kpt_a][1]
@@ -205,15 +238,13 @@ def draw_3d_landmarks(ax,coord_3d):
     #     cv2.circle(img, (int(x_a), int(y_a)), 6, (255, 0, 0), -1)
     #     cv2.circle(img, (int(x_b), int(y_b)), 6, (255, 0, 0), -1)
     #     cv2.line(img, (int(x_a), int(y_a)), (int(x_b), int(y_b)), (0, 255, 0), 2)
-
-    i=0
-    for coord in coord_3d:
-        ax.scatter(coord[0],coord[1],coord[2])
+    for i in range(len(coord_3d)):
+        ax.scatter(coord_3d[i][0],coord_3d[i][1],coord_3d[i][2])
         kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
-        x_a, y_a, z_a = coord[kpt_a][0],coord[kpt_a][1],coord[kpt_a][2]
-        x_b, y_b, z_b = coord[kpt_b][0],coord[kpt_b][1],coord[kpt_b][2]
+        print(kpt_a, kpt_b)
+        x_a, y_a, z_a = coord_3d[kpt_a][0],coord_3d[kpt_a][1],coord_3d[kpt_a][2]
+        x_b, y_b, z_b = coord_3d[kpt_b][0],coord_3d[kpt_b][1],coord_3d[kpt_b][2]
         ax.plot([x_a,x_b],[y_a,y_b],[z_a,z_b],color='gray')
-        i+=1
     plt.draw()
     plt.pause(0.01)
 

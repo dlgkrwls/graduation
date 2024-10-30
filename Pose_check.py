@@ -94,10 +94,10 @@ def check_knee_position(coords_2d_2, tolerance=0.1, side='left'):
     # 측면에서의 무릎과 발끝 비교 (x 좌표만 사용)
     if side == 'left':
         knee_x = coords_2d_2['left_knee'][0]
-        foot_x = coords_2d_2['left_foot'][0]
+        foot_x = coords_2d_2['left_ankle'][0]
     else:
         knee_x = coords_2d_2['right_knee'][0]
-        foot_x = coords_2d_2['right_foot'][0]
+        foot_x = coords_2d_2['right_ankle'][0]
 
         # 무릎이 발끝을 넘었는지 확인
     # 신체 가동범위에 따라 일부 넘을 수 있기 때문에 약간의 오차를 줘야될듯

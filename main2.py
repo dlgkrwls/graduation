@@ -8,9 +8,11 @@ import torch
 from torch import nn
 import os
 from smoothing_npy_return.SmoothNet.lib.models.smoothnet import  SmoothNet
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
-
-
 
 class PoseEstimator:
     def __init__(self, front_video_path, side_video_path, output_front_file, output_side_file):
@@ -52,7 +54,7 @@ class PoseEstimator:
         self.smooth_model = util.setup_smooth_model(self.checkpoint_path)
         self.front_video_writer = cv2.VideoWriter(self.output_front_file, self.fourcc, self.fps1, (self.frame_width, self.frame_height))
         self.side_video_writer = cv2.VideoWriter(self.output_side_file, self.fourcc, self.fps2, (self.frame_width, self.frame_height))
-
+        self.P1,self.P2 = util.P1P2(self.camera_matrix1,self.camera_matrix2)
 
     # 저장되고 반환 json 반환
     def process_video(self):
@@ -176,11 +178,20 @@ class PoseEstimator:
             #                                          (self.frame_height, self.frame_width))
 
             ### 한솔 Test draw
+            front_smoothed_data_abs = util.abs_xy(front_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
+            side_smoothed_data_abs = util.abs_xy(side_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
             frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
             frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
-            coords_3d=util.triangulate_3d_points(front_smoothed_data[frame_idx],side_smoothed_data[frame_idx],P1,P2)
+            coords_3d=util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2)
             scale_3d_coords = util.scale_3d_coords(coords_3d)
+
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            plt.ion()
+
             util.draw_3d_landmarks(ax,scale_3d_coords)
+            plt.ioff()  # 모든 업데이트가 끝나면 인터랙티브 모드 끄기
+            plt.show()
 
             cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
             cv2.imshow("Side Camera - Smoothed", frame2_smoothed)
