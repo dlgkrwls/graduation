@@ -175,10 +175,14 @@ class PoseEstimator:
 
             frame1_smoothed = frame1.copy()
             frame2_smoothed = frame2.copy()
-            frame1_smoothed = util.draw_2d_landmarks(frame1_smoothed, front_coords_dict, connections, body_parts,
-                                                     (self.frame_height, self.frame_width))
-            frame2_smoothed = util.draw_2d_landmarks(frame2_smoothed, side_coords_dict, connections_right, body_parts,
-                                                     (self.frame_height, self.frame_width))
+            # frame1_smoothed = util.draw_2d_landmarks(frame1_smoothed, front_coords_dict, connections, body_parts,
+            #                                          (self.frame_height, self.frame_width))
+            # frame2_smoothed = util.draw_2d_landmarks(frame2_smoothed, side_coords_dict, connections_right, body_parts,
+            #                                          (self.frame_height, self.frame_width))
+
+            ### 한솔 Test draw
+            frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
+            frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
 
             cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
             cv2.imshow("Side Camera - Smoothed", frame2_smoothed)

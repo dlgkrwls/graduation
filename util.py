@@ -6,7 +6,30 @@ import json
 import time
 import Pose_check
 import counting_f
+import torch
+from smoothing_npy_return.SmoothNet.lib.models.smoothnet import SmoothNet
+
 mp_pose = mp.solutions.pose
+SKELETON = [
+    [1,3],[1,0],[2,4],[2,0],[0,5],[0,6],[5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,12],[11,13],[13,15],[12,14],[14,16]
+]
+NUM_KPTS = 17
+
+def setup_smooth_model(checkpoint_path):
+        window_size = 32
+        output_size = 32
+        hidden_size = 512
+        res_hidden_size = 128
+        num_blocks = 5
+        dropout = 0.5
+
+        model = SmoothNet(window_size= window_size, output_size=output_size, hidden_size=hidden_size,
+                          res_hidden_size=res_hidden_size, num_blocks=num_blocks, dropout=dropout)
+        checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+        model.load_state_dict(checkpoint['state_dict'])
+        model.eval()
+        return model
+
 def setup_camera():
     camera_matrix1 = np.array([[497.39900884, 0, 323.96380382], [0, 496.67512836, 250.05988172], [0, 0, 1]])
     dist_coeffs1 = np.array([[0.02950153, 0.0615235, -0.00102225, -0.00196549, -0.15609333]])
@@ -138,6 +161,23 @@ def calculate_2d_angle(v1, v2):
     cos_theta = dot_product / (norm_v1 * norm_v2)
     angle = np.arccos(np.clip(cos_theta, -1.0, 1.0))  # cos_theta가 -1에서 1 사이에 있도록 클리핑
     return np.degrees(angle)
+
+def draw_pose(keypoints,img,frame_shape):
+    """draw the keypoints and the skeletons.
+    :params keypoints: the shape should be equal to [17,2]
+    :params img:
+    """
+    keypoints= keypoints * frame_shape
+    assert keypoints.shape == (NUM_KPTS,2)
+
+    for i in range(len(SKELETON)):
+        kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
+        x_a, y_a = keypoints[kpt_a][0],keypoints[kpt_a][1]
+        x_b, y_b = keypoints[kpt_b][0],keypoints[kpt_b][1] 
+        cv2.circle(img, (int(x_a), int(y_a)), 6, (255, 0, 0), -1)
+        cv2.circle(img, (int(x_b), int(y_b)), 6, (255, 0, 0), -1)
+        cv2.line(img, (int(x_a), int(y_a)), (int(x_b), int(y_b)), (0, 255, 0), 2)
+    return img
 
 # 이건 그냥 좌표찍기
 def draw_2d_landmarks(frame,coords,connections,body_part):
