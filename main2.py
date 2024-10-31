@@ -10,7 +10,7 @@ import os
 from smoothing_npy_return.SmoothNet.lib.models.smoothnet import  SmoothNet
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-
+from matplotlib.animation import FFMpegWriter
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -55,7 +55,7 @@ class PoseEstimator:
         self.output_side_file = output_side_file
         self.health_warning = {'frames': []}
         self.camera_matrix1, self.dist_coeffs1, self.camera_matrix2, self.dist_coeffs2 = util.setup_camera()
-        self.checkpoint_path = 'smoothing_npy_return/checkpoint_8.pth (1).tar'
+        self.checkpoint_path = 'smoothing_npy_return/hrnet_32.pth (1).tar'
  #       self.checkpoint_path_3D = 'smoothing_npy_return/3D_smooth.tar'
         self.mediapipe_to_coco_indices = [
             0,  # nose
@@ -189,80 +189,82 @@ class PoseEstimator:
         ################################################위에 하나라도 인간 디텍트 안되면 아마 프레임이 안맞을꺼임
         self.img1 = cv2.VideoCapture(self.front_video_path)
         self.img2 = cv2.VideoCapture(self.side_video_path)
-        for frame_idx in range(len(front_smoothed_data)):
-            ret1, frame1 = self.img1.read()
-            ret2, frame2 = self.img2.read()
 
-            if not ret1 or not ret2:
-                break
+        writer = FFMpegWriter(fps=self.fps1, metadata=dict(artist='Me'), bitrate=1800)
+        output_file = "data/pose_3d_test_defmode.mp4"
+        fig = plt.figure(figsize=(self.frame_width / 100, self.frame_height / 100)) 
+        ax = fig.add_subplot(111, projection='3d')
+        with writer.saving(fig, output_file, dpi=100):
+            for frame_idx in range(len(front_smoothed_data)):
+                ret1, frame1 = self.img1.read()
+                ret2, frame2 = self.img2.read()
 
-            front_coords_dict = util.convert_smoothed_to_dict(front_smoothed_data[frame_idx],
-                                                              (self.frame_width, self.frame_height))
-            side_coords_dict = util.convert_smoothed_to_dict(side_smoothed_data[frame_idx],
-                                                             (self.frame_width, self.frame_height))
-            #########################################3
-            #########################################
-            # #여기에 학습 모델 들어가야 할듯 ..
-            # model = MultiClassTransformer(num_points=17, d_model=64, num_heads=8, num_layers=3, num_classes=3)
+                if not ret1 or not ret2:
+                    break
 
-            # # 저장된 모델 가중치 로드
-            # checkpoint_path_class = 'transformer_lr0199.pth'
-            # model.load_state_dict(torch.load(checkpoint_path_class, map_location=torch.device('cpu')))  # CPU로 로드 가능
+                front_coords_dict = util.convert_smoothed_to_dict(front_smoothed_data[frame_idx],
+                                                                (self.frame_width, self.frame_height))
+                side_coords_dict = util.convert_smoothed_to_dict(side_smoothed_data[frame_idx],
+                                                                (self.frame_width, self.frame_height))
+                #########################################3
+                #########################################
+                # #여기에 학습 모델 들어가야 할듯 ..
+                # model = MultiClassTransformer(num_points=17, d_model=64, num_heads=8, num_layers=3, num_classes=3)
 
-            # # 모델을 평가 모드로 설정 (학습이 끝난 후라면 필요)
-            # model.eval()
+                # # 저장된 모델 가중치 로드
+                # checkpoint_path_class = 'transformer_lr0199.pth'
+                # model.load_state_dict(torch.load(checkpoint_path_class, map_location=torch.device('cpu')))  # CPU로 로드 가능
 
-            # # 예시 데이터로 모델 추론
-            # # 예시 입력 데이터 생성 (batch_size, num_points, 2) 형태로, 이 경우 (1, 17, 2)
-            # example_input = torch.randn(1, 17, 2)
+                # # 모델을 평가 모드로 설정 (학습이 끝난 후라면 필요)
+                # model.eval()
 
-            # # 추론 수행
-            # output = model(example_input)
-            # print(output)  # 모델의 출력 확인
+                # # 예시 데이터로 모델 추론
+                # # 예시 입력 데이터 생성 (batch_size, num_points, 2) 형태로, 이 경우 (1, 17, 2)
+                # example_input = torch.randn(1, 17, 2)
 
-            ###########################################
-            ###########################################
+                # # 추론 수행
+                # output = model(example_input)
+                # print(output)  # 모델의 출력 확인
 
-            stance_list.append(Pose_check.check_stance(front_coords_dict))
-            knee_position_list.append(Pose_check.check_knee_position(side_coords_dict, side='right'))
-            knee_angle_list.append(Pose_check.calculate_knee_angle(side_coords_dict, side='right'))
+                ###########################################
+                ###########################################
 
-            frame1_smoothed = frame1.copy()
-            frame2_smoothed = frame2.copy()
-            # frame1_smoothed = util.draw_2d_landmarks(frame1_smoothed, front_coords_dict, connections, body_parts,
-            #                                          (self.frame_height, self.frame_width))
-            # frame2_smoothed = util.draw_2d_landmarks(frame2_smoothed, side_coords_dict, connections_right, body_parts,
-            #                                          (self.frame_height, self.frame_width))
+                stance_list.append(Pose_check.check_stance(front_coords_dict))
+                knee_position_list.append(Pose_check.check_knee_position(side_coords_dict, side='right'))
+                knee_angle_list.append(Pose_check.calculate_knee_angle(side_coords_dict, side='right'))
 
-            ### 한솔 Test draw
-            front_smoothed_data_abs = util.abs_xy(front_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
-            side_smoothed_data_abs = util.abs_xy(side_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
-            frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
-            frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
-            # print(coords_3d)
-            # print("3D좌표")
-            # projection_coords_3d = coords_3d
-            # for i in range(len(projection_coords_3d)):
-                
-            #     projection_coords_3d[]
-#
-            smooth_coords_3d=util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2))
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            plt.ion()
+                frame1_smoothed = frame1.copy()
+                frame2_smoothed = frame2.copy()
+                # frame1_smoothed = util.draw_2d_landmarks(frame1_smoothed, front_coords_dict, connections, body_parts,
+                #                                          (self.frame_height, self.frame_width))
+                # frame2_smoothed = util.draw_2d_landmarks(frame2_smoothed, side_coords_dict, connections_right, body_parts,
+                #                                          (self.frame_height, self.frame_width))
 
-            util.draw_3d_landmarks(ax,smooth_coords_3d)
-            plt.show()
+                ### 한솔 Test draw
+                front_smoothed_data_abs = util.abs_xy(front_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
+                side_smoothed_data_abs = util.abs_xy(side_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
+                frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
+                frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
+                # print(coords_3d)
+                # print("3D좌표")
+                # projection_coords_3d = coords_3d
+                # for i in range(len(projection_coords_3d)):
+                    
+                #     projection_coords_3d[]
+    #
+                smooth_coords_3d=util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2))
+                print("k")
+                util.draw_3d_landmarks(ax,writer,smooth_coords_3d)
 
-            cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
-            cv2.imshow("Side Camera - Smoothed", frame2_smoothed)
+                cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
+                cv2.imshow("Side Camera - Smoothed", frame2_smoothed)
 
 
-            self.front_video_writer.write(frame1_smoothed)
-            self.side_video_writer.write(frame2_smoothed)
+                self.front_video_writer.write(frame1_smoothed)
+                self.side_video_writer.write(frame2_smoothed)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
         count_list, squat_count = counting_f.squart_count(y)
         util.count_injury(stance_list, knee_position_list, knee_angle_list, count_list, self.health_warning)
 
@@ -282,8 +284,8 @@ class PoseEstimator:
 
 
 if __name__ == "__main__":
-    front_video = 'data/output1.mp4'
-    side_video = 'data/output2.mp4'
+    front_video = 'data/detect_5_squart_front.mp4'
+    side_video = 'data/detect_5_squart.mp4'
     output_front_file = 'data/output1_t.mp4'
     output_side_file = 'data/output2_t.mp4'
 

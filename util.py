@@ -17,8 +17,8 @@ SKELETON = [
 NUM_KPTS = 17
 
 def setup_smooth_model(checkpoint_path):
-        window_size = 8
-        output_size = 8
+        window_size = 32
+        output_size = 32
         hidden_size = 512
         res_hidden_size = 128
         num_blocks = 5
@@ -274,7 +274,8 @@ def draw_2d_landmarks(frame,coords,connections,body_part):
 
     return frame
 # 3d 좌표찍기
-def draw_3d_landmarks(ax,coord_3d):
+def draw_3d_landmarks(ax,writer,coord_3d):
+    print("k")
     ax.clear()
     # 좌표찍기
 
@@ -287,17 +288,25 @@ def draw_3d_landmarks(ax,coord_3d):
     #     cv2.line(img, (int(x_a), int(y_a)), (int(x_b), int(y_b)), (0, 255, 0), 2)
     for i in range(len(SKELETON)):
         if i ==0:
-            ax.scatter(coord_3d[i][0],coord_3d[i][1],coord_3d[i][2])
+            ax.scatter(coord_3d[i][0],coord_3d[i][2],-coord_3d[i][1])
         else :
-            ax.scatter(coord_3d[i+4][0],coord_3d[i+4][1],coord_3d[i+4][2])
+            ax.scatter(coord_3d[i+4][0],coord_3d[i+4][2],-coord_3d[i+4][1])
         kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
         x_a, y_a, z_a = coord_3d[kpt_a][0],coord_3d[kpt_a][1],coord_3d[kpt_a][2]
         x_b, y_b, z_b = coord_3d[kpt_b][0],coord_3d[kpt_b][1],coord_3d[kpt_b][2]
-        ax.plot([x_a,x_b],[y_a,y_b],[z_a,z_b],color='gray')
-    plt.draw()
-    plt.pause(0.01)
-    plt.ioff()  # 모든 업데이트가 끝나면 인터랙티브 모드 끄기
+        ax.plot([x_a,x_b],[z_a,z_b],[-y_a,-y_b],color='gray')
+ # 축 범위 고정
+    ax.set_xlim([0, 1])
+    ax.set_ylim([-1, 0])
+    ax.set_zlim([-1, 0])
+    ax.set_xlabel('X')
+    ax.set_ylabel('Z')
+    ax.set_zlabel('Y')
 
+    # 초기 시점 설정 (elev: 높이, azim: 방향)
+    ax.view_init(elev=2, azim=-45)
+
+    writer.grab_frame()  # 현재 프레임을 mp4에 저장
 
     # 모델이 뽑은 좌표 * 이미지 shape으로 실제 픽셀값 추출
 def extract_camera_coords(landmarks, frame):
