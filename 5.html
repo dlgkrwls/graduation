@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자세 분석 및 피드백</title>
+    <link rel="stylesheet" href="assets/css/hj2.css">
+</head>
+<body>
+    <h1>스쿼트 영상 분석</h1>
+ 
+    <div class="container">
+        <!-- 비디오를 출력할 컨테이너 -->
+        <div class="video-container">
+            <video id="videoPlayer1" controls></video>
+            <video id="videoPlayer2" controls></video>
+        </div>
+
+        <!-- 스쿼트 횟수에 따라 프레임 이동 버튼 -->
+        <div class="controls-container">
+            <h2>스쿼트 횟수 선택</h2>
+            <button id="playFullVideoBtn">전체 영상 재생</button>
+            <div id="squatControls"></div> <!-- 버튼들을 생성할 영역 -->
+        </div>
+
+        <!-- 텍스트 및 JSON 데이터를 출력할 컨테이너 -->
+        <div class="text-container">
+            <h2>스쿼트 분석 결과</h2>
+            <div id="overallAnalysis" class="overall-analysis"></div>
+            <div id="squatInfo" class="squat-info"></div> <!-- JSON 데이터를 출력할 영역 -->
+        </div>
+    </div>
+
+    <script>
+        // 비디오 플레이어 요소들
+        const videoPlayer1 = document.getElementById('videoPlayer1');
+        const videoPlayer2 = document.getElementById('videoPlayer2');
+        // 서버에서 제공할 동영상 파일 이름
+        // const videoFilePath1 = "detect_5_squart_front_class.mp4";  // 첫 번째 동영상 파일
+        //const videoFilePath2 = "detect_5_squart_class.mp4";  // 두 번째 동영상 파일
+
+        const videoFilePath1 = "ch_output1.mp4"; 
+        const videoFilePath2 = "pose_3d_test.mp4";  
+
+        // 비디오 파일을 서버에서 가져와서 출력
+        videoPlayer1.src = `http://127.0.0.1:5000/video/${videoFilePath1}`;
+        videoPlayer2.src = `http://127.0.0.1:5000/video/${videoFilePath2}`;
+
+        videoPlayer1.style.display = 'block';
+        videoPlayer2.style.display = 'block';
+
+        // UI에 스쿼트 분석 결과 표시
+        const squatInfo = document.getElementById('squatInfo');
+        const squatControls = document.getElementById('squatControls');
+
+        // 서버에서 JSON 데이터를 받아오는 함수
+        async function fetchSquatData() {
+            try {
+                const filename = 'test.json'; // JSON 파일 이름 설정
+                const response = await fetch(`http://127.0.0.1:5000/json/${filename}`); // JSON 데이터 요청
+                if (!response.ok) {
+                    throw new Error('JSON 데이터를 가져오는 데 실패했습니다.');
+                }
+                const data = await response.json(); // JSON 데이터를 가져옴
+                displaySquatControls(data); // 가져온 데이터를 UI에 반영
+                displayOverallAnalysis(data); // 전체 분석 결과를 출력
+            } catch (error) {
+                console.error('에러 발생:', error);
+                squatInfo.textContent = '스쿼트 데이터 로드 실패: ' + error.message;
+            }
+        }
+
+        // 현재 선택된 스쿼트 분석을 저장할 변수
+        let currentSelectedSquat = null;
+        let currentSelectedOverall = null;
+
+        const playFullVideoBtn = document.getElementById('playFullVideoBtn');
+        // 전체 영상 재생 및 전체 분석 결과 강조
+        playFullVideoBtn.addEventListener('click', () => {
+            // 전체 영상 재생
+            playFullVideo(videoPlayer1);
+            playFullVideo(videoPlayer2);
+
+            // 기존 강조된 분석 결과 초기화
+            if (currentSelectedSquat) {
+                currentSelectedSquat.classList.remove('selected-squat');
+            }
+            if (currentSelectedOverall) {
+                currentSelectedOverall.classList.remove('selected-overall');
+            }
+
+            // 전체 분석 결과 강조
+            const overallAnalysis = document.getElementById('overallAnalysis');
+            overallAnalysis.classList.add('selected-overall');
+            currentSelectedOverall = overallAnalysis;
+
+            // 전체 분석 결과만 출력
+            squatInfo.innerHTML = "";  // 다른 결과는 숨김
+        });
+
+        // 전체 영상 재생 함수
+        function playFullVideo(video) {
+            video.currentTime = 0; // 시작 시간으로 설정
+            video.play();
+        }
+
+        // 각 스쿼트에 대한 버튼을 표시하는 함수
+        function displaySquatControls(data) {
+            // 기존 내용 초기화
+            squatControls.innerHTML = '';
+
+            data.frames.forEach((frame, index) => {
+                // 프레임 이동 버튼 생성
+                const btn = document.createElement('button');
+                btn.textContent = `스쿼트 ${frame.count} 이동`;
+
+                // stance에 따라 버튼 색깔 설정
+                // if (frame.stance === false) {
+                //     btn.classList.add('red-button'); // 스탠스가 false인 경우 빨간색
+                // } 
+                if (frame.count %2 == 0) {
+                    btn.classList.add('red-button'); // 스탠스가 false인 경우 빨간색
+                } 
+
+                btn.addEventListener('click', () => {
+                    // 동영상을 해당 프레임 범위에서 재생
+                    playVideoAtFrame(videoPlayer1, frame.start_indx, frame.end_indx);
+                    playVideoAtFrame(videoPlayer2, frame.start_indx, frame.end_indx);
+                    
+                    // 기존 강조된 분석 결과를 초기화
+                    if (currentSelectedSquat) {
+                        currentSelectedSquat.classList.remove('selected-squat');
+                    }
+
+                    // 선택한 스쿼트 결과만 출력
+                    displaySquatResult(frame);
+
+                    // 새로 선택한 분석 결과 강조
+                    currentSelectedSquat = document.getElementById('squatInfo');
+                    currentSelectedSquat.classList.add('selected-squat');
+                });
+                squatControls.appendChild(btn);
+            });
+        }
+
+        // 선택한 스쿼트에 대한 분석 결과를 출력하는 함수
+        function displaySquatResult(frame) {
+            // 기존 내용 초기화
+            squatInfo.innerHTML = '';
+            
+            // 텍스트 정보 출력
+            const info = document.createElement('p');
+            info.innerHTML = `<span class="squat-count"> 스쿼트 ${frame.count}:</span>  스탠스 ${frame.stance ? '좋음' : '나쁨'}: 무릎 각도: ${frame.knee_angle}, 무릎 위치: ${frame.knee_position}`;
+            squatInfo.appendChild(info);
+        }
+
+        // 전체 분석 결과 출력 (스쿼트 분석 결과 밑에 추가)
+        function displayOverallAnalysis(data) {
+            const overallAnalysis = document.getElementById('overallAnalysis');
+            let trueCount = 0;
+            let falseCount = 0;
+
+            data.frames.forEach((frame) => {
+                if (frame.stance === true) {
+                    trueCount++;
+                } else {
+                    falseCount++;
+                }
+            });
+
+            if (trueCount > falseCount) {
+                overallAnalysis.textContent = "전체적으로 좋은 스쿼트입니다!";
+            } else {
+                overallAnalysis.textContent = "스쿼트 자세를 개선할 필요가 있습니다.";
+            }
+        }
+
+        // 동영상을 특정 프레임에서 재생하는 함수
+        function playVideoAtFrame(video, startFrame, endFrame) {
+            const fps = 24; // 비디오의 초당 프레임 수 (FPS)
+            const startTime = startFrame / fps;
+            const endTime = endFrame / fps;
+
+            video.currentTime = startTime;
+            video.play();
+
+            // 특정 시간이 지나면 비디오를 정지
+            setTimeout(() => {
+                video.pause();
+                video.currentTime = endTime;
+            }, (endTime - startTime) * 1000);
+        }
+
+        // JSON 데이터로 UI 업데이트
+        fetchSquatData();
+    </script>
+</body>
+</html>
+
