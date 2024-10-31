@@ -2,50 +2,42 @@
      "frames": [
           {
                "count": 1,
-               "start_indx": 1,
-               "end_indx": 99,
+               "start_indx": 20,
+               "end_indx": 92,
                "stance": false,
-               "knee_angle": true,
+               "knee_angle": false,
                "knee_position": false
           },
           {
                "count": 2,
-               "start_indx": 99,
-               "end_indx": 191,
+               "start_indx": 92,
+               "end_indx": 173,
                "stance": false,
-               "knee_angle": true,
+               "knee_angle": false,
                "knee_position": false
           },
           {
                "count": 3,
-               "start_indx": 191,
-               "end_indx": 280,
+               "start_indx": 173,
+               "end_indx": 253,
                "stance": false,
                "knee_angle": true,
                "knee_position": false
           },
           {
                "count": 4,
-               "start_indx": 280,
-               "end_indx": 363,
+               "start_indx": 253,
+               "end_indx": 295,
                "stance": false,
                "knee_angle": true,
                "knee_position": false
           },
           {
                "count": 5,
-               "start_indx": 363,
-               "end_indx": 420,
+               "start_indx": 295,
+               "end_indx": 362,
                "stance": false,
-               "knee_angle": true,
-               "knee_position": false
-          },
-          {
-               "count": 6,
-               "start_indx": 420,
-               "end_indx": 492,
-               "stance": false,
-               "knee_angle": true,
+               "knee_angle": false,
                "knee_position": false
           }
      ]

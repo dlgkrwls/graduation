@@ -142,6 +142,12 @@ def extract_coco_format(results, coco_indices):
     xy_coords = [(landmarks[idx].x, landmarks[idx].y) for idx in coco_indices]
     return xy_coords
 
+def extract_coco_3dformat(results, coco_indices):
+    """Extracts landmarks in COCO format."""
+    landmarks = results.pose_landmarks.landmark
+    xy_coords = [(landmarks[idx].x, landmarks[idx].y,landmarks[idx].z) for idx in coco_indices]
+    return xy_coords
+
 # Triangulation을 통한 3D 좌표 계산
 def triangulate_3d_points(camera_coords1, camera_coords2, P1, P2, body_parts):
     coords_3d = {}

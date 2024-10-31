@@ -62,6 +62,7 @@ class PoseEstimator:
         self.health_warning = {'frames': []}
         self.camera_matrix1, self.dist_coeffs1, self.camera_matrix2, self.dist_coeffs2 = util.setup_camera()
         self.checkpoint_path = 'smoothing_npy_return/hrnet_32.pth (1).tar'
+        self.checkpoint_path = 'smoothing_npy_return/3D_smooth.tar'
         self.mediapipe_to_coco_indices = [
             0,  # nose
             2,  # left_eye (대체할 수 있는 MediaPipe 좌표)
@@ -274,8 +275,8 @@ class PoseEstimator:
 
 
 if __name__ == "__main__":
-    front_video = 'data/detect_5_squart_front.mp4'
-    side_video = 'data/detect_5_squart.mp4'
+    front_video = 'data/wrong_squart_front.mp4'
+    side_video = 'data/wrong_squart_side.mp4'
     output_front_file = 'data/delay_check.mp4'
     output_side_file = 'data/smooth_detect_5_squart_class.mp4'
 
