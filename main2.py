@@ -197,23 +197,23 @@ class PoseEstimator:
                                                              (self.frame_width, self.frame_height))
             #########################################3
             #########################################
-            #여기에 학습 모델 들어가야 할듯 ..
-            model = MultiClassTransformer(num_points=17, d_model=64, num_heads=8, num_layers=3, num_classes=3)
+            # #여기에 학습 모델 들어가야 할듯 ..
+            # model = MultiClassTransformer(num_points=17, d_model=64, num_heads=8, num_layers=3, num_classes=3)
 
-            # 저장된 모델 가중치 로드
-            checkpoint_path_class = 'transformer_lr0199.pth'
-            model.load_state_dict(torch.load(checkpoint_path_class, map_location=torch.device('cpu')))  # CPU로 로드 가능
+            # # 저장된 모델 가중치 로드
+            # checkpoint_path_class = 'transformer_lr0199.pth'
+            # model.load_state_dict(torch.load(checkpoint_path_class, map_location=torch.device('cpu')))  # CPU로 로드 가능
 
-            # 모델을 평가 모드로 설정 (학습이 끝난 후라면 필요)
-            model.eval()
+            # # 모델을 평가 모드로 설정 (학습이 끝난 후라면 필요)
+            # model.eval()
 
-            # 예시 데이터로 모델 추론
-            # 예시 입력 데이터 생성 (batch_size, num_points, 2) 형태로, 이 경우 (1, 17, 2)
-            example_input = torch.randn(1, 17, 2)
+            # # 예시 데이터로 모델 추론
+            # # 예시 입력 데이터 생성 (batch_size, num_points, 2) 형태로, 이 경우 (1, 17, 2)
+            # example_input = torch.randn(1, 17, 2)
 
-            # 추론 수행
-            output = model(example_input)
-            print(output)  # 모델의 출력 확인
+            # # 추론 수행
+            # output = model(example_input)
+            # print(output)  # 모델의 출력 확인
 
             ###########################################
             ###########################################
@@ -235,6 +235,7 @@ class PoseEstimator:
             frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
             frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
             coords_3d=util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2)
+            
             scale_3d_coords = util.scale_3d_coords(coords_3d)
 
             fig = plt.figure()
