@@ -235,8 +235,8 @@ class PoseEstimator:
             #                                          (self.frame_height, self.frame_width))
 
             ### 한솔 Test draw
-            # front_smoothed_data_abs = util.abs_xy(front_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
-            # side_smoothed_data_abs = util.abs_xy(side_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
+            front_smoothed_data_abs = util.abs_xy(front_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
+            side_smoothed_data_abs = util.abs_xy(side_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
             frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
             frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
             # print(coords_3d)
@@ -246,13 +246,13 @@ class PoseEstimator:
                 
             #     projection_coords_3d[]
 #
-            # smooth_coords_3d=util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2))
-            # fig = plt.figure()
-            # ax = fig.add_subplot(111, projection='3d')
-            # plt.ion()
+            smooth_coords_3d=util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2))
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            plt.ion()
 
-            # util.draw_3d_landmarks(ax,smooth_coords_3d[frame_idx])
-            # plt.show()
+            util.draw_3d_landmarks(ax,smooth_coords_3d)
+            plt.show()
 
             cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
             cv2.imshow("Side Camera - Smoothed", frame2_smoothed)

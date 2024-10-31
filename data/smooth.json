@@ -5,30 +5,30 @@
                "start_indx": 1,
                "end_indx": 99,
                "stance": false,
-               "knee_angle": false,
+               "knee_angle": true,
                "knee_position": true
           },
           {
                "count": 2,
                "start_indx": 99,
                "end_indx": 191,
-               "stance": false,
-               "knee_angle": false,
+               "stance": true,
+               "knee_angle": true,
                "knee_position": true
           },
           {
                "count": 3,
                "start_indx": 191,
                "end_indx": 280,
-               "stance": false,
-               "knee_angle": false,
+               "stance": true,
+               "knee_angle": true,
                "knee_position": true
           },
           {
                "count": 4,
                "start_indx": 280,
                "end_indx": 363,
-               "stance": false,
+               "stance": true,
                "knee_angle": true,
                "knee_position": true
           },
@@ -36,15 +36,15 @@
                "count": 5,
                "start_indx": 363,
                "end_indx": 420,
-               "stance": false,
+               "stance": true,
                "knee_angle": true,
                "knee_position": true
           },
           {
                "count": 6,
                "start_indx": 420,
-               "end_indx": 480,
-               "stance": false,
+               "end_indx": 7,
+               "stance": true,
                "knee_angle": true,
                "knee_position": true
           }
