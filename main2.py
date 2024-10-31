@@ -10,9 +10,50 @@ import os
 from classfier import MultiClassTransformer
 from smoothing_npy_return.SmoothNet.lib.models.smoothnet import  SmoothNet
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+##########################
+import matplotlib.pyplot as plt
+import mediapipe as mp
+mp_pose = mp.solutions.pose
+plt.ion()
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
 
+def plot_3d_landmarks(landmarks):
+    ax.cla()  # Clear previous frame
+    x_vals, y_vals, z_vals = [], [], []
 
+    # 랜드마크 좌표 리스트 추출
+    for landmark in landmarks:
+        x_vals.append(landmark.x)  # X 좌표
+        y_vals.append(landmark.y)  # Y 좌표
+        z_vals.append(landmark.z)  # Z 좌표
 
+    # 스켈레톤 랜드마크 연결 (MediaPipe의 Pose 모델 연결과 유사)
+    connections = mp_pose.POSE_CONNECTIONS
+    for start_idx, end_idx in connections:
+        ax.plot(
+            [x_vals[start_idx], x_vals[end_idx]],
+            [z_vals[start_idx], z_vals[end_idx]],  # z와 y 축 변환
+            [-y_vals[start_idx], -y_vals[end_idx]], color='black'
+        )
+
+    # 3D 랜드마크 플로팅
+    ax.scatter(x_vals, z_vals, -np.array(y_vals), c='r', marker='o')
+
+    # 축 범위 고정
+    ax.set_xlim([0, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_zlim([-1, 0])
+    ax.set_xlabel('X')
+    ax.set_ylabel('Z')
+    ax.set_zlabel('Y')
+
+    # 초기 시점 설정 (elev: 높이, azim: 방향)
+    # ax.view_init(elev=2, azim=-90)
+
+    plt.draw()
+    plt.pause(0.001)
+##################
 class PoseEstimator:
     def __init__(self, front_video_path, side_video_path, output_front_file, output_side_file):
         self.front_video_path = front_video_path
@@ -22,6 +63,7 @@ class PoseEstimator:
         self.health_warning = {'frames': []}
         self.camera_matrix1, self.dist_coeffs1, self.camera_matrix2, self.dist_coeffs2 = util.setup_camera()
         self.checkpoint_path = 'smoothing_npy_return/hrnet_32.pth (1).tar'
+        self.checkpoint_path = 'smoothing_npy_return/3D_smooth.tar'
         self.mediapipe_to_coco_indices = [
             0,  # nose
             2,  # left_eye (대체할 수 있는 MediaPipe 좌표)
@@ -51,6 +93,7 @@ class PoseEstimator:
         self.fps2 = self.img2.get(cv2.CAP_PROP_FPS)
         self.pose_model = util.setup_pose_model()
         self.smooth_model = util.setup_smooth_model(self.checkpoint_path)
+        self.pose_3d_model = util.setup_3dpose_model()
         self.front_video_writer = cv2.VideoWriter(self.output_front_file, self.fourcc, self.fps1, (self.frame_width, self.frame_height))
         self.side_video_writer = cv2.VideoWriter(self.output_side_file, self.fourcc, self.fps2, (self.frame_width, self.frame_height))
 
@@ -182,6 +225,7 @@ class PoseEstimator:
         ################################################위에 하나라도 인간 디텍트 안되면 아마 프레임이 안맞을꺼임
         self.img1 = cv2.VideoCapture(self.front_video_path)
         self.img2 = cv2.VideoCapture(self.side_video_path)
+        # 반복문 front_smoothed_data로해야하나>
         for frame_idx in range(len(front_smoothed_data)):
             ret1, frame1 = self.img1.read()
             ret2, frame2 = self.img2.read()
@@ -202,6 +246,12 @@ class PoseEstimator:
             stance_list.append(Pose_check.check_stance(front_coords_dict))
             knee_position_list.append(Pose_check.check_knee_position(side_coords_dict, side='right'))
             knee_angle_list.append(Pose_check.calculate_knee_angle(side_coords_dict, side='right'))
+
+
+            result_3d = self.pose_3d_model.process(frame1)
+
+            if result_3d.pose_landmarks:
+                plot_3d_landmarks(result_3d.pose_landmarks.landmark)
 
             frame1_smoothed = frame1.copy()
             frame2_smoothed = frame2.copy()
@@ -233,6 +283,8 @@ class PoseEstimator:
         self.side_video_writer.release()
         self.img1.release()
         self.img2.release()
+        plt.ioff()
+        plt.show()
         cv2.destroyAllWindows()
         return self.health_warning
 
@@ -242,8 +294,8 @@ class PoseEstimator:
 
 
 if __name__ == "__main__":
-    front_video = 'data/detect_5_squart_front.mp4'
-    side_video = 'data/detect_5_squart.mp4'
+    front_video = 'data/wrong_squart_front.mp4'
+    side_video = 'data/wrong_squart_side.mp4'
     output_front_file = 'data/delay_check.mp4'
     output_side_file = 'data/smooth_detect_5_squart_class.mp4'
     model = MultiClassTransformer()

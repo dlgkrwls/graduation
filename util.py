@@ -30,6 +30,8 @@ def setup_smooth_model(checkpoint_path):
         model.eval()
         return model
 
+
+
 def setup_camera():
     camera_matrix1 = np.array([[497.39900884, 0, 323.96380382], [0, 496.67512836, 250.05988172], [0, 0, 1]])
     dist_coeffs1 = np.array([[0.02950153, 0.0615235, -0.00102225, -0.00196549, -0.15609333]])
@@ -41,7 +43,8 @@ def setup_camera():
 
 def setup_pose_model():
     return mp.solutions.pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-
+def setup_3dpose_model():
+    return mp.solutions.pose.Pose(static_image_mode=False,min_detection_confidence=0.5, min_tracking_confidence=0.5)
 # 왜곡 보정 이미지 반환
 def undistort_image(frame, camera_matrix, dist_coeffs):
     return cv2.undistort(frame, camera_matrix, dist_coeffs)
@@ -77,6 +80,38 @@ def apply_smoothing(pose_data, model, issave=False, save_path=None):
 
     return smoothed_data
 
+def apply_3dsmoothing(pose_data, model, issave=False, save_path=None):
+    # Convert pose data to a numpy array and ensure it has the correct shape
+    pose_data = np.array(pose_data)
+    input_data = pose_data.reshape(len(pose_data), -1) if pose_data.ndim == 3 else pose_data
+
+    smoothed_data = []
+    window_size = model.window_size
+
+
+    for start in range(0, input_data.shape[0] - window_size + 1, window_size):
+        end = start + window_size
+        window_data = input_data[start:end]
+        input_tensor = torch.tensor(window_data, dtype=torch.float32).unsqueeze(0).permute(0, 2, 1)
+
+
+        with torch.no_grad():
+            smoothed_output = model(input_tensor).squeeze(0).permute(1, 0).numpy()
+            smoothed_data.append(smoothed_output)
+
+    remaining_start = (input_data.shape[0] // window_size) * window_size
+    if remaining_start < input_data.shape[0]:
+        remaining_data = input_data[remaining_start:]
+        smoothed_data.append(remaining_data)
+
+        # Concatenate all smoothed windows and reshape to the original format
+    smoothed_data = np.concatenate(smoothed_data, axis=0).reshape(-1, 17, 3)
+
+    if issave and save_path:
+        np.save(save_path, smoothed_data)
+
+    return smoothed_data
+
 
 def convert_smoothed_to_dict(smoothed_coords, frame_shape):
     """Converts smoothed coordinates to a dictionary format for easy access."""
@@ -105,6 +140,12 @@ def extract_coco_format(results, coco_indices):
     """Extracts landmarks in COCO format."""
     landmarks = results.pose_landmarks.landmark
     xy_coords = [(landmarks[idx].x, landmarks[idx].y) for idx in coco_indices]
+    return xy_coords
+
+def extract_coco_3dformat(results, coco_indices):
+    """Extracts landmarks in COCO format."""
+    landmarks = results.pose_landmarks.landmark
+    xy_coords = [(landmarks[idx].x, landmarks[idx].y,landmarks[idx].z) for idx in coco_indices]
     return xy_coords
 
 # Triangulation을 통한 3D 좌표 계산
@@ -374,3 +415,41 @@ def count_injury(stance,knee_angle,knee_position,count_list,health_warning):
         #     frame_data['knee_position'] = 1
 
         health_warning['frames'].append(frame_data)
+
+
+
+def plot_3d_landmarks(landmarks):
+    ax.cla()  # Clear previous frame
+    x_vals, y_vals, z_vals = [], [], []
+
+    # 랜드마크 좌표 리스트 추출
+    for landmark in landmarks:
+        x_vals.append(landmark.x)  # X 좌표
+        y_vals.append(landmark.y)  # Y 좌표
+        z_vals.append(landmark.z)  # Z 좌표
+
+    # 스켈레톤 랜드마크 연결 (MediaPipe의 Pose 모델 연결과 유사)
+    connections = mp_pose.POSE_CONNECTIONS
+    for start_idx, end_idx in connections:
+        ax.plot(
+            [x_vals[start_idx], x_vals[end_idx]],
+            [z_vals[start_idx], z_vals[end_idx]],  # z와 y 축 변환
+            [-y_vals[start_idx], -y_vals[end_idx]], color='black'
+        )
+
+    # 3D 랜드마크 플로팅
+    ax.scatter(x_vals, z_vals, -np.array(y_vals), c='r', marker='o')
+
+    # 축 범위 고정
+    ax.set_xlim([0, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_zlim([-1, 0])
+    ax.set_xlabel('X')
+    ax.set_ylabel('Z')
+    ax.set_zlabel('Y')
+
+    # 초기 시점 설정 (elev: 높이, azim: 방향)
+    # ax.view_init(elev=2, azim=-90)
+
+    plt.draw()
+    plt.pause(0.001)
