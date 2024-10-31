@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Squat Visualization</title>
+    <style>
+        .container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+        }
+        .video, .plot {
+            border: 1px solid #ddd;
+            width: 45%;
+            height: auto;
+        }
+    </style>
+    <script>
+        function refreshPlot() {
+            document.getElementById('plot').src = "/plot_feed10?" + new Date().getTime();
+        }
+        setInterval(refreshPlot, 500);  // 500ms마다 plot 갱신
+    </script>
+</head>
+<body>
+    <h1>3D Squat Visualization</h1>
+    <div class="container">
+        <div class="video">
+            <h2>Video Feed</h2>
+            <img src="http://127.0.0.1:5000/video_feed10" alt="Squat Video Stream">
+        </div>
+        <div class="plot">
+            <h2>3D Pose Plot</h2>
+            <img id="plot" src="http://127.0.0.1:5000/plot_feed10" alt="3D Pose Plot">
+        </div>
+    </div>
+</body>
+</html>

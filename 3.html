@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실시간 영상 스트리밍 및 녹화</title>
+    <link rel="stylesheet" href="assets/css/hj1.css">
+    <style>
+        /* 로딩 스피너 스타일 */
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+            display: none; /* 처음엔 숨김 */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 로딩 오버레이 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            display: none; /* 처음엔 숨김 */
+        }
+
+        /* 로딩 문구 스타일 */
+        .loading-text {
+            color: white;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>실시간 스트리밍 및 녹화</h1>
+
+    <div class="video-container">
+        <img id="video1" src="http://127.0.0.1:5000/video_feed1" alt="Live Stream 1" width="640" height="480">
+        <img id="video2" src="http://127.0.0.1:5000/video_feed2" alt="Live Stream 2" width="640" height="480">
+    </div>
+    
+    <br>
+    <button id="startBtn">녹화 시작</button>
+    <button id="stopBtn" disabled>녹화 중지</button>
+    
+    <video id="processedVideo1" controls style="display: none;"></video>
+    <video id="processedVideo2" controls style="display: none;"></video>
+
+    <!-- 로딩 오버레이 및 스피너 -->
+    <div class="loading-overlay">
+        <div class="loader"></div>
+        <div class="loading-text">스쿼트 자세를 분석 중입니다. 잠시만 기다려주세요...</div>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const processedVideo1 = document.getElementById('processedVideo1');
+        const processedVideo2 = document.getElementById('processedVideo2');
+        const loader = document.querySelector('.loader');
+        const overlay = document.querySelector('.loading-overlay');
+
+        // 녹화 시작
+        startBtn.addEventListener('click', () => {
+            fetch('http://127.0.0.1:5000/start_recording', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.message);
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                });
+        });
+
+        // 녹화 중지
+        stopBtn.addEventListener('click', () => {
+            fetch('http://127.0.0.1:5000/stop_recording', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.message);
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+
+                    if (confirm("영상을 서버로 업로드하여 처리하시겠습니까?")) {
+                        uploadAndConvert();
+                    }
+                });
+        });
+
+        // 서버로 업로드 및 변환 요청
+        function uploadAndConvert() {
+            overlay.style.display = 'flex'; // 로딩 오버레이 표시
+            loader.style.display = 'block'; // 스피너 표시
+
+            fetch('http://127.0.0.1:5000/upload_and_convert', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data.message);
+
+                    // 로딩 완료되면 스피너 숨기기
+                    overlay.style.display = 'none';
+                    loader.style.display = 'none';
+
+                    // 처리된 동영상 경로를 사용해 새로운 페이지로 이동
+                    const video1Path = data.video1;
+                    const video2Path = data.video2;
+                    window.location.href = `5.html?video1=${encodeURIComponent(video1Path)}&video2=${encodeURIComponent(video2Path)}`;
+                });
+        }
+    </script>
+
+</body>
+</html>
