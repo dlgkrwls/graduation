@@ -205,34 +205,34 @@ class PoseEstimator:
         front_smoothed_data = util.apply_smoothing(front_pose_data, self.smooth_model, False,'front_smoothed_pose_data.npy')
         side_smoothed_data = util.apply_smoothing(side_pose_data, self.smooth_model, False,'side_smoothed_pose_data.npy')
 
-        #######임계값 기반 체크 ###########################################근데 여기에 모델추가해서 모델이 부상이라하면 1차 필터링
-        ####
-
-        ###    트랜스포머
-        ###
-        ###
-        ###
-        ###
-        ###
-        #횟수 별로프레임 수 가져오기 (전체 데이터를 횟수 별로 분할)
+        # #######임계값 기반 체크 ###########################################근데 여기에 모델추가해서 모델이 부상이라하면 1차 필터링
+        # ####
+        #
+        # ###    트랜스포머
+        # ###
+        # ###
+        # ###
+        # ###
+        # ###
+        # #횟수 별로프레임 수 가져오기 (전체 데이터를 횟수 별로 분할)
         count_list, squat_count = counting_f.squart_count(y)
-        outputs = []
-
-        # 횟수 별로 프레임을 긁어 모아서 데이터 정규화 및 필요한 좌표만 뽑아서 data로 저장
-        #저장한 data를 모델에 돌림
-        # 출력 형태: json형식으로
-        # {횟수(1,2...n): [0,0,0,0,0,0,0,0,0,0,1,1,1,1...]}
-        for i, data in enumerate(squat_count,count_list):
-            data = []
-            if i <= len(count_list)-1:
-                for frm in range(count_list[i],count_list[i+1]):
-                    front_smoothed_data[frm].T[0] = (front_smoothed_data[frm].T[0] - front_smoothed_data[frm].T[0].min())/(front_smoothed_data[frm].T[0].max()-front_smoothed_data[frm].T[0].min())
-                    front_smoothed_data[frm].T[1] = (front_smoothed_data[frm].T[1] - front_smoothed_data[frm].T[1].min())/(front_smoothed_data[frm].T[1].max()-front_smoothed_data[frm].T[1].min())
-                    data.append(front_smoothed_data[frm][0,5,6,9,10,11,12,13,14,15,16][:])
-                outputs.append({i,model(data)})   # 횟수 별 분류 결과 저장
-
-
-        stance_list, knee_position_list, knee_angle_list = [], [], []
+        # # outputs = []
+        #
+        # # 횟수 별로 프레임을 긁어 모아서 데이터 정규화 및 필요한 좌표만 뽑아서 data로 저장
+        # #저장한 data를 모델에 돌림
+        # # 출력 형태: json형식으로
+        # # {횟수(1,2...n): [0,0,0,0,0,0,0,0,0,0,1,1,1,1...]}
+        # for i, data in enumerate(squat_count,count_list):
+        #     data = []
+        #     if i <= len(count_list)-1:
+        #         for frm in range(count_list[i],count_list[i+1]):
+        #             front_smoothed_data[frm].T[0] = (front_smoothed_data[frm].T[0] - front_smoothed_data[frm].T[0].min())/(front_smoothed_data[frm].T[0].max()-front_smoothed_data[frm].T[0].min())
+        #             front_smoothed_data[frm].T[1] = (front_smoothed_data[frm].T[1] - front_smoothed_data[frm].T[1].min())/(front_smoothed_data[frm].T[1].max()-front_smoothed_data[frm].T[1].min())
+        #             data.append(front_smoothed_data[frm][0,5,6,9,10,11,12,13,14,15,16][:])
+        #         outputs.append({i,model(data)})   # 횟수 별 분류 결과 저장
+        #
+        #
+        # stance_list, knee_position_list, knee_angle_list = [], [], []
 
         # 이미지와 스무딩된 좌표 시각화 및 저장 ################문제점
         ################################################위에 하나라도 인간 디텍트 안되면 아마 프레임이 안맞을꺼임
@@ -307,12 +307,12 @@ class PoseEstimator:
 
 
 if __name__ == "__main__":
-    front_video = 'data/wrong_squart_front.mp4'
-    side_video = 'data/wrong_squart_side.mp4'
+    front_video = 'data/output.mp4'
+    side_video = 'data/output_side.mp4'
     output_front_file = 'data/delay_check.mp4'
     output_side_file = 'data/smooth_detect_5_squart_class.mp4'
     model = MultiClassTransformer()
-    model.load_state_dict('transformer_lr0199.pth')
+    #.load_state_dict('transformer_lr0199.pth')
     # 클래스 초기화로 파일위치, 저장위치 매개변수로 받음
     estimator = PoseEstimator(front_video, side_video, output_front_file, output_side_file)
     estimator.setup_videos()
