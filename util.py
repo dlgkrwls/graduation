@@ -53,18 +53,23 @@ def apply_smoothing(pose_data, model, issave=False, save_path=None):
     smoothed_data = []
     window_size = model.window_size
 
-    # Process data in sliding windows
+
     for start in range(0, input_data.shape[0] - window_size + 1, window_size):
         end = start + window_size
         window_data = input_data[start:end]
         input_tensor = torch.tensor(window_data, dtype=torch.float32).unsqueeze(0).permute(0, 2, 1)
 
-        # Use the model to smooth the data
+
         with torch.no_grad():
             smoothed_output = model(input_tensor).squeeze(0).permute(1, 0).numpy()
             smoothed_data.append(smoothed_output)
 
-    # Concatenate all smoothed windows and reshape to the original format
+    remaining_start = (input_data.shape[0] // window_size) * window_size
+    if remaining_start < input_data.shape[0]:
+        remaining_data = input_data[remaining_start:]
+        smoothed_data.append(remaining_data)
+
+        # Concatenate all smoothed windows and reshape to the original format
     smoothed_data = np.concatenate(smoothed_data, axis=0).reshape(-1, 17, 2)
 
     if issave and save_path:

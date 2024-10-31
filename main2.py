@@ -136,8 +136,18 @@ class PoseEstimator:
                 side_pose_data.append(side_coords)
                 y.append(front_coords[0][1])
 
-
-
+            else:
+                # 사람이 감지되지 않은 경우 빈 좌표 추가
+                if front_pose_data:
+                    # 이전 프레임의 좌표 복사
+                    front_pose_data.append(front_pose_data[-1])
+                    side_pose_data.append(side_pose_data[-1])
+                    y.append(0)
+                else:
+                    # 초기 상태일 경우 빈 좌표 추가
+                    front_pose_data.append([(0, 0)] * len(self.mediapipe_to_coco_indices))
+                    side_pose_data.append([(0, 0)] * len(self.mediapipe_to_coco_indices))
+                    y.append(0)
 
         #################후처리 시작
         ##### 스무딩적용
@@ -197,7 +207,9 @@ class PoseEstimator:
 
         with open("data/smooth.json", 'w') as f:
             json.dump(self.health_warning, f, indent=5)
-
+        print(len(front_pose_data))
+        print(len(front_smoothed_data))
+        print(len(y))
         self.front_video_writer.release()
         self.side_video_writer.release()
         self.img1.release()
@@ -211,9 +223,9 @@ class PoseEstimator:
 
 
 if __name__ == "__main__":
-    front_video = 'data/detect_5_squart_front.mp4'
+    front_video = 'data/delay.mp4'
     side_video = 'data/detect_5_squart.mp4'
-    output_front_file = 'data/smooth_detect_5_squart_front_class.mp4'
+    output_front_file = 'data/delay_check.mp4'
     output_side_file = 'data/smooth_detect_5_squart_class.mp4'
 
     # 클래스 초기화로 파일위치, 저장위치 매개변수로 받음
