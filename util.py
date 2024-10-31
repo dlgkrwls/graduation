@@ -66,6 +66,8 @@ def setup_pose_model():
 # 왜곡 보정 이미지 반환
 def undistort_image(frame, camera_matrix, dist_coeffs):
     return cv2.undistort(frame, camera_matrix, dist_coeffs)
+
+
 def apply_smoothing(pose_data, model, issave=False, save_path=None):
     # Convert pose data to a numpy array and ensure it has the correct shape
     pose_data = np.array(pose_data)
@@ -88,6 +90,39 @@ def apply_smoothing(pose_data, model, issave=False, save_path=None):
     # Concatenate all smoothed windows and reshape to the original format
     smoothed_data = np.concatenate(smoothed_data, axis=0).reshape(-1, 17, 2)
 
+    if issave and save_path:
+        np.save(save_path, smoothed_data)
+
+    return smoothed_data
+
+
+def apply_3Dsmoothing(pose_data, model, issave=False, save_path=None):
+# Convert pose data to a numpy array and ensure it has the correct shape
+    pose_data = np.array(pose_data)
+
+    input_data = pose_data.reshape(len(pose_data), -1) if pose_data.ndim == 3 else pose_data
+
+    smoothed_data = []
+    window_size = model.window_size
+
+    # Process data in sliding windows
+    for start in range(0, input_data.shape[0] - window_size + 1, window_size):
+        end = start + window_size
+        window_data = input_data[start:end]
+        if window_data.shape[0] != window_size:
+            continue  # Skip if window is smaller than expected
+
+        input_tensor = torch.tensor(window_data, dtype=torch.float32).unsqueeze(0).permute(0, 2, 1)
+
+        # Use the model to smooth the data
+        with torch.no_grad():
+            smoothed_output = model(input_tensor).squeeze(0).permute(1, 0).numpy()
+            smoothed_data.append(smoothed_output)
+
+    # Check if there is any smoothed data to concatenate
+    if smoothed_data:
+        smoothed_data = np.concatenate(smoothed_data, axis=0).reshape(-1, 17, 3)
+        
     if issave and save_path:
         np.save(save_path, smoothed_data)
 
@@ -117,7 +152,7 @@ def convert_smoothed_to_dict(smoothed_coords, frame_shape):
     }
 
 def abs_xy(coord,frame_shape):
-    abs_coord=coord*frame_shape
+    abs_coord = [(x * frame_shape[0], y * frame_shape[1]) for x, y in coord]
     return abs_coord
 
 def extract_coco_format(results, coco_indices):
@@ -130,8 +165,8 @@ def extract_coco_format(results, coco_indices):
 def triangulate_3d_points(camera_coords1, camera_coords2, P1, P2):
     coords_3d = []
     for i in range(len(camera_coords1)):
-        points_4d = cv2.triangulatePoints(P1, P2, camera_coords1[i].reshape(2, 1),
-                                          camera_coords2[i].reshape(2, 1))
+        points_4d = cv2.triangulatePoints(P1, P2, np.array(camera_coords1[i]).reshape(2, 1),
+                                  np.array(camera_coords2[i]).reshape(2, 1))
         coords_3d.append(points_4d[:3] / points_4d[3])  # homogeneous coordinates to 3D
     return coords_3d
 
@@ -161,7 +196,6 @@ def scale_3d_coords(coords_3d):
         scaled_y = scale_value(coord[1], y_min, y_max)
         scaled_z = scale_value(coord[2], z_min, z_max)
         scaled_coords_3d.append((scaled_x, scaled_y, scaled_z))  # 튜플 형태로 추가
-        print(scaled_coords_3d)
     return scaled_coords_3d
 
 # # 스케일링된 3D 좌표 반환
@@ -216,7 +250,6 @@ def draw_pose(keypoints,img,frame_shape):
     """
     keypoints= keypoints * frame_shape
     assert keypoints.shape == (NUM_KPTS,2)
-    print(keypoints)
     cv2.circle(img, (int(keypoints[0][0]), int(keypoints[0][1])), 6, (255, 0, 0), -1)
     for i in range(len(SKELETON)):
         kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
@@ -259,7 +292,6 @@ def draw_3d_landmarks(ax,coord_3d):
         else :
             ax.scatter(coord_3d[i+4][0],coord_3d[i+4][1],coord_3d[i+4][2])
         kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
-        print(kpt_a, kpt_b)
         x_a, y_a, z_a = coord_3d[kpt_a][0],coord_3d[kpt_a][1],coord_3d[kpt_a][2]
         x_b, y_b, z_b = coord_3d[kpt_b][0],coord_3d[kpt_b][1],coord_3d[kpt_b][2]
         ax.plot([x_a,x_b],[y_a,y_b],[z_a,z_b],color='gray')
