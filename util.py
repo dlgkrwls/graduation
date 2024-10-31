@@ -8,10 +8,11 @@ import Pose_check
 import counting_f
 import torch
 from smoothing_npy_return.SmoothNet.lib.models.smoothnet import SmoothNet
+from class_model import MultiClassTransformer
 
 mp_pose = mp.solutions.pose
 SKELETON = [
-    [1,3],[1,0],[2,4],[2,0],[0,5],[0,6],[5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,12],[11,13],[13,15],[12,14],[14,16]
+    [5,6],[5,7],[7,9],[6,8],[8,10],[5,11],[6,12],[11,12],[11,13],[13,15],[12,14],[14,16],[0,0]
 ]
 NUM_KPTS = 17
 
@@ -26,6 +27,20 @@ def setup_smooth_model(checkpoint_path):
         model = SmoothNet(window_size= window_size, output_size=output_size, hidden_size=hidden_size,
                           res_hidden_size=res_hidden_size, num_blocks=num_blocks, dropout=dropout)
         checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
+        model.load_state_dict(checkpoint['state_dict'])
+        model.eval()
+        return model
+
+def apply_class(pose_data, model, issave=False, save_path=None):
+    # Convert pose data to a numpy array and ensure it has the correct shape
+    pose_data = np.array(pose_data)
+    input_data = pose_data.reshape(len(pose_data), -1) if pose_data.ndim == 3 else pose_data
+    output = model(input_data)
+    return output
+
+def setup_class_model(checkpoint_path):
+        model = MultiClassTransformer()
+        checkpoint = torch.load(checkpoint_path, map_location=torch.device('gpu'))
         model.load_state_dict(checkpoint['state_dict'])
         model.eval()
         return model
@@ -203,6 +218,7 @@ def draw_pose(keypoints,img,frame_shape):
     keypoints= keypoints * frame_shape
     assert keypoints.shape == (NUM_KPTS,2)
     print(keypoints)
+    cv2.circle(img, (int(keypoints[0][0]), int(keypoints[0][1])), 6, (255, 0, 0), -1)
     for i in range(len(SKELETON)):
         kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
         x_a, y_a = keypoints[kpt_a][0],keypoints[kpt_a][1]
@@ -238,8 +254,11 @@ def draw_3d_landmarks(ax,coord_3d):
     #     cv2.circle(img, (int(x_a), int(y_a)), 6, (255, 0, 0), -1)
     #     cv2.circle(img, (int(x_b), int(y_b)), 6, (255, 0, 0), -1)
     #     cv2.line(img, (int(x_a), int(y_a)), (int(x_b), int(y_b)), (0, 255, 0), 2)
-    for i in range(len(coord_3d)):
-        ax.scatter(coord_3d[i][0],coord_3d[i][1],coord_3d[i][2])
+    for i in range(len(SKELETON)):
+        if i ==0:
+            ax.scatter(coord_3d[i][0],coord_3d[i][1],coord_3d[i][2])
+        else :
+            ax.scatter(coord_3d[i+4][0],coord_3d[i+4][1],coord_3d[i+4][2])
         kpt_a, kpt_b = SKELETON[i][0], SKELETON[i][1]
         print(kpt_a, kpt_b)
         x_a, y_a, z_a = coord_3d[kpt_a][0],coord_3d[kpt_a][1],coord_3d[kpt_a][2]
@@ -247,6 +266,8 @@ def draw_3d_landmarks(ax,coord_3d):
         ax.plot([x_a,x_b],[y_a,y_b],[z_a,z_b],color='gray')
     plt.draw()
     plt.pause(0.01)
+    plt.ioff()  # 모든 업데이트가 끝나면 인터랙티브 모드 끄기
+
 
     # 모델이 뽑은 좌표 * 이미지 shape으로 실제 픽셀값 추출
 def extract_camera_coords(landmarks, frame):

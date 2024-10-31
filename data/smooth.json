@@ -43,7 +43,7 @@
           {
                "count": 6,
                "start_indx": 420,
-               "end_indx": 13,
+               "end_indx": 30,
                "stance": true,
                "knee_angle": true,
                "knee_position": true

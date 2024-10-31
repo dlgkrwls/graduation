@@ -23,6 +23,7 @@ class PoseEstimator:
         self.health_warning = {'frames': []}
         self.camera_matrix1, self.dist_coeffs1, self.camera_matrix2, self.dist_coeffs2 = util.setup_camera()
         self.checkpoint_path = 'smoothing_npy_return/hrnet_32.pth (1).tar'
+        self.checkpoint_path_class = 'transformer_lr0199.pth'
         self.mediapipe_to_coco_indices = [
             0,  # nose
             2,  # left_eye (대체할 수 있는 MediaPipe 좌표)
@@ -52,6 +53,7 @@ class PoseEstimator:
         self.fps2 = self.img2.get(cv2.CAP_PROP_FPS)
         self.pose_model = util.setup_pose_model()
         self.smooth_model = util.setup_smooth_model(self.checkpoint_path)
+        self.class_model = util.setup_class_model(self.checkpoint_path_class)
         self.front_video_writer = cv2.VideoWriter(self.output_front_file, self.fourcc, self.fps1, (self.frame_width, self.frame_height))
         self.side_video_writer = cv2.VideoWriter(self.output_side_file, self.fourcc, self.fps2, (self.frame_width, self.frame_height))
         self.P1,self.P2 = util.P1P2(self.camera_matrix1,self.camera_matrix2)
@@ -163,6 +165,8 @@ class PoseEstimator:
             #########################################3
             #########################################
             #여기에 학습 모델 들어가야 할듯 ..
+            classfication = util.apply_class(front_smoothed_data[frame_idx],self.class_model)
+            print(classfication)
             ###########################################
             ###########################################
 
@@ -190,7 +194,6 @@ class PoseEstimator:
             plt.ion()
 
             util.draw_3d_landmarks(ax,scale_3d_coords)
-            plt.ioff()  # 모든 업데이트가 끝나면 인터랙티브 모드 끄기
             plt.show()
 
             cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
