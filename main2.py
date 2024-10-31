@@ -206,9 +206,22 @@ class PoseEstimator:
         side_smoothed_data = util.apply_smoothing(side_pose_data, self.smooth_model, False,'side_smoothed_pose_data.npy')
 
         #######임계값 기반 체크 ###########################################근데 여기에 모델추가해서 모델이 부상이라하면 1차 필터링
-        
+        ####
+
+        ###    트랜스포머
+        ###
+        ###
+        ###
+        ###
+        ###
+        #횟수 별로프레임 수 가져오기 (전체 데이터를 횟수 별로 분할)
         count_list, squat_count = counting_f.squart_count(y)
         outputs = []
+
+        # 횟수 별로 프레임을 긁어 모아서 데이터 정규화 및 필요한 좌표만 뽑아서 data로 저장
+        #저장한 data를 모델에 돌림
+        # 출력 형태: json형식으로
+        # {횟수(1,2...n): [0,0,0,0,0,0,0,0,0,0,1,1,1,1...]}
         for i, data in enumerate(squat_count,count_list):
             data = []
             if i <= len(count_list)-1:
@@ -299,6 +312,7 @@ if __name__ == "__main__":
     output_front_file = 'data/delay_check.mp4'
     output_side_file = 'data/smooth_detect_5_squart_class.mp4'
     model = MultiClassTransformer()
+    model.load_state_dict('transformer_lr0199.pth')
     # 클래스 초기화로 파일위치, 저장위치 매개변수로 받음
     estimator = PoseEstimator(front_video, side_video, output_front_file, output_side_file)
     estimator.setup_videos()
