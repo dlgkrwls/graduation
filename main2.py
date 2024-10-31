@@ -126,6 +126,8 @@ class PoseEstimator:
             pose_results2 = self.pose_model.process(cv2.cvtColor(frame2_undistorted, cv2.COLOR_BGR2RGB))
 
             if pose_results1.pose_landmarks and pose_results2.pose_landmarks:
+                print("33333333333333333333")
+
                 # front_side 관절좌표
                 #front_coords1 = util.extract_camera_coords(pose_results1.pose_landmarks.landmark, frame1_undistorted)
                 #side_coords2 = util.extract_camera_coords(pose_results2.pose_landmarks.landmark, frame2_undistorted)
@@ -137,17 +139,21 @@ class PoseEstimator:
                 y.append(front_coords[0][1])
 
             else:
-                # 사람이 감지되지 않은 경우 빈 좌표 추가
-                if front_pose_data:
-                    # 이전 프레임의 좌표 복사
-                    front_pose_data.append(front_pose_data[-1])
-                    side_pose_data.append(side_pose_data[-1])
-                    y.append(0)
-                else:
-                    # 초기 상태일 경우 빈 좌표 추가
-                    front_pose_data.append([(0, 0)] * len(self.mediapipe_to_coco_indices))
-                    side_pose_data.append([(0, 0)] * len(self.mediapipe_to_coco_indices))
-                    y.append(0)
+                print("222222222222222222222222222")
+            #     # 사람이 감지되지 않은 경우 빈 좌표 추가
+            #     if front_pose_data:
+            #         print("11111111111111111")
+            #         # 이전 프레임의 좌표 복사
+            #         front_pose_data.append(front_pose_data[-1])
+            #         side_pose_data.append(side_pose_data[-1])
+            #         y.append(0)
+            #     else:
+            #         # 초기 상태일 경우 빈 좌표 추가
+            #         print("2222222222222222222")
+
+            #         front_pose_data.append([(0, 0)] * len(self.mediapipe_to_coco_indices))
+            #         side_pose_data.append([(0, 0)] * len(self.mediapipe_to_coco_indices))
+            #         y.append(0)
 
         #################후처리 시작
         ##### 스무딩적용
@@ -223,7 +229,7 @@ class PoseEstimator:
 
 
 if __name__ == "__main__":
-    front_video = 'data/delay.mp4'
+    front_video = 'data/detect_5_squart_front.mp4'
     side_video = 'data/detect_5_squart.mp4'
     output_front_file = 'data/delay_check.mp4'
     output_side_file = 'data/smooth_detect_5_squart_class.mp4'
