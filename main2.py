@@ -7,6 +7,7 @@ import counting_f
 import torch
 from torch import nn
 import os
+from classfier import MultiClassTransformer
 from smoothing_npy_return.SmoothNet.lib.models.smoothnet import  SmoothNet
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -162,6 +163,19 @@ class PoseEstimator:
         side_smoothed_data = util.apply_smoothing(side_pose_data, self.smooth_model, False,'side_smoothed_pose_data.npy')
 
         #######임계값 기반 체크 ###########################################근데 여기에 모델추가해서 모델이 부상이라하면 1차 필터링
+        
+        count_list, squat_count = counting_f.squart_count(y)
+        outputs = []
+        for i, data in enumerate(squat_count,count_list):
+            data = []
+            if i <= len(count_list)-1:
+                for frm in range(count_list[i],count_list[i+1]):
+                    front_smoothed_data[frm].T[0] = (front_smoothed_data[frm].T[0] - front_smoothed_data[frm].T[0].min())/(front_smoothed_data[frm].T[0].max()-front_smoothed_data[frm].T[0].min())
+                    front_smoothed_data[frm].T[1] = (front_smoothed_data[frm].T[1] - front_smoothed_data[frm].T[1].min())/(front_smoothed_data[frm].T[1].max()-front_smoothed_data[frm].T[1].min())
+                    data.append(front_smoothed_data[frm][0,5,6,9,10,11,12,13,14,15,16][:])
+                outputs.append({i,model(data)})   # 횟수 별 분류 결과 저장
+
+
         stance_list, knee_position_list, knee_angle_list = [], [], []
 
         # 이미지와 스무딩된 좌표 시각화 및 저장 ################문제점
@@ -208,7 +222,6 @@ class PoseEstimator:
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-        count_list, squat_count = counting_f.squart_count(y)
         util.count_injury(stance_list, knee_position_list, knee_angle_list, count_list, self.health_warning)
 
         with open("data/smooth.json", 'w') as f:
@@ -233,7 +246,7 @@ if __name__ == "__main__":
     side_video = 'data/detect_5_squart.mp4'
     output_front_file = 'data/delay_check.mp4'
     output_side_file = 'data/smooth_detect_5_squart_class.mp4'
-
+    model = MultiClassTransformer()
     # 클래스 초기화로 파일위치, 저장위치 매개변수로 받음
     estimator = PoseEstimator(front_video, side_video, output_front_file, output_side_file)
     estimator.setup_videos()
