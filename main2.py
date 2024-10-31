@@ -55,8 +55,8 @@ class PoseEstimator:
         self.output_side_file = output_side_file
         self.health_warning = {'frames': []}
         self.camera_matrix1, self.dist_coeffs1, self.camera_matrix2, self.dist_coeffs2 = util.setup_camera()
-        self.checkpoint_path = 'smoothing_npy_return/hrnet_32.pth (1).tar'
-        self.checkpoint_path_3D = 'smoothing_npy_return/3D_smooth.tar'
+        self.checkpoint_path = 'smoothing_npy_return/checkpoint_8.pth (1).tar'
+ #       self.checkpoint_path_3D = 'smoothing_npy_return/3D_smooth.tar'
         self.mediapipe_to_coco_indices = [
             0,  # nose
             2,  # left_eye (대체할 수 있는 MediaPipe 좌표)
@@ -86,7 +86,7 @@ class PoseEstimator:
         self.fps2 = self.img2.get(cv2.CAP_PROP_FPS)
         self.pose_model = util.setup_pose_model()
         self.smooth_model = util.setup_smooth_model(self.checkpoint_path)
-        self.smooth_model_3d = util.setup_smooth_model(self.checkpoint_path_3D)
+#        self.smooth_model_3d = util.setup_smooth_model(self.checkpoint_path_3D)
         self.front_video_writer = cv2.VideoWriter(self.output_front_file, self.fourcc, self.fps1, (self.frame_width, self.frame_height))
         self.side_video_writer = cv2.VideoWriter(self.output_side_file, self.fourcc, self.fps2, (self.frame_width, self.frame_height))
         self.P1,self.P2 = util.P1P2(self.camera_matrix1,self.camera_matrix2)
@@ -176,12 +176,12 @@ class PoseEstimator:
                 ################################################3D
                 front_smoothed_data_abs = util.abs_xy(front_coords,(self.frame_width, self.frame_height))
                 side_smoothed_data_abs = util.abs_xy(side_coords,(self.frame_width, self.frame_height))
-                coords_3d_data.append(util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2)))
+ #               coords_3d_data.append(util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2)))
 
 
         front_smoothed_data = util.apply_smoothing(front_pose_data, self.smooth_model, False,'front_smoothed_pose_data.npy')
         side_smoothed_data = util.apply_smoothing(side_pose_data, self.smooth_model, False,'side_smoothed_pose_data.npy')
-        smooth_coords_3d = util.apply_3Dsmoothing(coords_3d_data,self.smooth_model_3d, False,'smoothed_3D_pose_data.npy')
+#        smooth_coords_3d = util.apply_3Dsmoothing(coords_3d_data,self.smooth_model_3d, False,'smoothed_3D_pose_data.npy')
         #######임계값 기반 체크 ###########################################근데 여기에 모델추가해서 모델이 부상이라하면 1차 필터링
         stance_list, knee_position_list, knee_angle_list = [], [], []
 
@@ -282,10 +282,10 @@ class PoseEstimator:
 
 
 if __name__ == "__main__":
-    front_video = 'data/detect_5_squart_front.mp4'
-    side_video = 'data/detect_5_squart.mp4'
-    output_front_file = 'data/smooth_detect_5_squart_front_class.mp4'
-    output_side_file = 'data/smooth_detect_5_squart_class.mp4'
+    front_video = 'data/output1.mp4'
+    side_video = 'data/output2.mp4'
+    output_front_file = 'data/output1_t.mp4'
+    output_side_file = 'data/output2_t.mp4'
 
     # 클래스 초기화로 파일위치, 저장위치 매개변수로 받음
     estimator = PoseEstimator(front_video, side_video, output_front_file, output_side_file)

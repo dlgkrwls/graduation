@@ -17,8 +17,8 @@ SKELETON = [
 NUM_KPTS = 17
 
 def setup_smooth_model(checkpoint_path):
-        window_size = 32
-        output_size = 32
+        window_size = 8
+        output_size = 8
         hidden_size = 512
         res_hidden_size = 128
         num_blocks = 5
@@ -96,37 +96,37 @@ def apply_smoothing(pose_data, model, issave=False, save_path=None):
     return smoothed_data
 
 
-def apply_3Dsmoothing(pose_data, model, issave=False, save_path=None):
-# Convert pose data to a numpy array and ensure it has the correct shape
-    pose_data = np.array(pose_data)
+# def apply_3Dsmoothing(pose_data, model, issave=False, save_path=None):
+# # Convert pose data to a numpy array and ensure it has the correct shape
+#     pose_data = np.array(pose_data)
 
-    input_data = pose_data.reshape(len(pose_data), -1) if pose_data.ndim == 3 else pose_data
+#     input_data = pose_data.reshape(len(pose_data), -1) if pose_data.ndim == 3 else pose_data
 
-    smoothed_data = []
-    window_size = model.window_size
+#     smoothed_data = []
+#     window_size = model.window_size
 
-    # Process data in sliding windows
-    for start in range(0, input_data.shape[0] - window_size + 1, window_size):
-        end = start + window_size
-        window_data = input_data[start:end]
-        if window_data.shape[0] != window_size:
-            continue  # Skip if window is smaller than expected
+#     # Process data in sliding windows
+#     for start in range(0, input_data.shape[0] - window_size + 1, window_size):
+#         end = start + window_size
+#         window_data = input_data[start:end]
+#         if window_data.shape[0] != window_size:
+#             continue  # Skip if window is smaller than expected
 
-        input_tensor = torch.tensor(window_data, dtype=torch.float32).unsqueeze(0).permute(0, 2, 1)
+#         input_tensor = torch.tensor(window_data, dtype=torch.float32).unsqueeze(0).permute(0, 2, 1)
 
-        # Use the model to smooth the data
-        with torch.no_grad():
-            smoothed_output = model(input_tensor).squeeze(0).permute(1, 0).numpy()
-            smoothed_data.append(smoothed_output)
+#         # Use the model to smooth the data
+#         with torch.no_grad():
+#             smoothed_output = model(input_tensor).squeeze(0).permute(1, 0).numpy()
+#             smoothed_data.append(smoothed_output)
 
-    # Check if there is any smoothed data to concatenate
-    if smoothed_data:
-        smoothed_data = np.concatenate(smoothed_data, axis=0).reshape(-1, 17, 3)
+#     # Check if there is any smoothed data to concatenate
+#     if smoothed_data:
+#         smoothed_data = np.concatenate(smoothed_data, axis=0).reshape(-1, 17, 3)
         
-    if issave and save_path:
-        np.save(save_path, smoothed_data)
+#     if issave and save_path:
+#         np.save(save_path, smoothed_data)
 
-    return smoothed_data
+#     return smoothed_data
 
 
 def convert_smoothed_to_dict(smoothed_coords, frame_shape):
@@ -189,7 +189,6 @@ def scale_3d_coords(coords_3d):
     x_min, x_max = x_coords.min(), x_coords.max()
     y_min, y_max = y_coords.min(), y_coords.max()
     z_min, z_max = z_coords.min(), z_coords.max()
-
     scaled_coords_3d = []
     for coord in coords_3d:
         scaled_x = scale_value(coord[0], x_min, x_max)
