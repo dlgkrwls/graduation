@@ -40,8 +40,7 @@ def apply_class(pose_data, model, issave=False, save_path=None):
 
 def setup_class_model(checkpoint_path):
         model = MultiClassTransformer()
-        checkpoint = torch.load(checkpoint_path, map_location=torch.device('gpu'))
-        model.load_state_dict(checkpoint['state_dict'])
+        model.load_state_dict(torch.load(checkpoint_path, map_location=torch.device('cpu')))
         model.eval()
         return model
 

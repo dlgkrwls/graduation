@@ -14,6 +14,39 @@ from mpl_toolkits.mplot3d import Axes3D
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
+
+class MultiClassTransformer(nn.Module):
+    def __init__(self, num_points=17, d_model=64, num_heads=8, num_layers=3, num_classes=3):
+        super(MultiClassTransformer, self).__init__()
+        
+        self.embedding = nn.Linear(2, d_model)  # 각 (x, y) 포인트를 d_model 임베딩으로 변환
+        self.positional_encoding = self._generate_positional_encoding(num_points, d_model)
+        
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=num_heads)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        
+        self.fc_out = nn.Linear(num_points * d_model, num_classes)  # 최종 출력 레이어
+        
+    def _generate_positional_encoding(self, num_points, d_model):
+        position = torch.arange(0, num_points, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-np.log(10000.0) / d_model))
+        pos_encoding = torch.zeros(num_points, d_model)
+        pos_encoding[:, 0::2] = torch.sin(position * div_term)
+        pos_encoding[:, 1::2] = torch.cos(position * div_term)
+        return pos_encoding.unsqueeze(0)
+    
+    def forward(self, x):
+        # x shape: (batch_size, num_points, 2)
+        x = self.embedding(x)  # 임베딩
+        x = x + self.positional_encoding  # 위치 인코딩 추가
+        x = x.permute(1, 0, 2)  # Transformer 인코더에 맞게 차원 변경
+        
+        encoded = self.transformer_encoder(x)  # Transformer 인코더에 입력
+        encoded = encoded.permute(1, 0, 2).reshape(x.shape[1], -1)  # 평탄화
+        
+        out = self.fc_out(encoded)  # 분류 레이어
+        return out
+
 class PoseEstimator:
     def __init__(self, front_video_path, side_video_path, output_front_file, output_side_file):
         self.front_video_path = front_video_path
@@ -53,7 +86,7 @@ class PoseEstimator:
         self.fps2 = self.img2.get(cv2.CAP_PROP_FPS)
         self.pose_model = util.setup_pose_model()
         self.smooth_model = util.setup_smooth_model(self.checkpoint_path)
-        self.class_model = util.setup_class_model(self.checkpoint_path_class)
+#        self.class_model = util.setup_class_model(self.checkpoint_path_class)
         self.front_video_writer = cv2.VideoWriter(self.output_front_file, self.fourcc, self.fps1, (self.frame_width, self.frame_height))
         self.side_video_writer = cv2.VideoWriter(self.output_side_file, self.fourcc, self.fps2, (self.frame_width, self.frame_height))
         self.P1,self.P2 = util.P1P2(self.camera_matrix1,self.camera_matrix2)
@@ -165,8 +198,23 @@ class PoseEstimator:
             #########################################3
             #########################################
             #여기에 학습 모델 들어가야 할듯 ..
-            classfication = util.apply_class(front_smoothed_data[frame_idx],self.class_model)
-            print(classfication)
+            model = MultiClassTransformer(num_points=17, d_model=64, num_heads=8, num_layers=3, num_classes=3)
+
+            # 저장된 모델 가중치 로드
+            checkpoint_path_class = 'transformer_lr0199.pth'
+            model.load_state_dict(torch.load(checkpoint_path_class, map_location=torch.device('cpu')))  # CPU로 로드 가능
+
+            # 모델을 평가 모드로 설정 (학습이 끝난 후라면 필요)
+            model.eval()
+
+            # 예시 데이터로 모델 추론
+            # 예시 입력 데이터 생성 (batch_size, num_points, 2) 형태로, 이 경우 (1, 17, 2)
+            example_input = torch.randn(1, 17, 2)
+
+            # 추론 수행
+            output = model(example_input)
+            print(output)  # 모델의 출력 확인
+
             ###########################################
             ###########################################
 

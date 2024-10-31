@@ -1,6 +1,6 @@
 import torch
 from torch import Tensor, nn
-
+import numpy as np
 
 class MultiClassTransformer(nn.Module):
     def __init__(self, num_points=17, d_model=64, num_heads=8, num_layers=3, num_classes=3):
