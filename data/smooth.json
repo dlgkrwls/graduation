@@ -2,11 +2,75 @@
      "frames": [
           {
                "count": 1,
-               "start_indx": 27,
-               "end_indx": 96,
+               "start_indx": 21,
+               "end_indx": 80,
                "stance": false,
                "knee_angle": false,
-               "knee_position": true
+               "knee_position": false
+          },
+          {
+               "count": 2,
+               "start_indx": 80,
+               "end_indx": 140,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": false
+          },
+          {
+               "count": 3,
+               "start_indx": 140,
+               "end_indx": 198,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": false
+          },
+          {
+               "count": 4,
+               "start_indx": 198,
+               "end_indx": 308,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": false
+          },
+          {
+               "count": 5,
+               "start_indx": 308,
+               "end_indx": 364,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": false
+          },
+          {
+               "count": 6,
+               "start_indx": 364,
+               "end_indx": 425,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": false
+          },
+          {
+               "count": 7,
+               "start_indx": 425,
+               "end_indx": 477,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": false
+          },
+          {
+               "count": 8,
+               "start_indx": 477,
+               "end_indx": 573,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": false
+          },
+          {
+               "count": 9,
+               "start_indx": 573,
+               "end_indx": 608,
+               "stance": false,
+               "knee_angle": false,
+               "knee_position": false
           }
      ]
 }

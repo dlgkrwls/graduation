@@ -9,7 +9,7 @@ from torch import nn
 import os
 from smoothing_npy_return.SmoothNet.lib.models.smoothnet import  SmoothNet
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+#from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FFMpegWriter
 
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
@@ -126,6 +126,7 @@ class PoseEstimator:
         frame_idx = 0
         stance_list = []
         knee_angle_list = []
+        knee_angle_deg = []
         knee_position_list = []
         front_pose_data =[]
         side_pose_data=[]
@@ -172,16 +173,9 @@ class PoseEstimator:
                 side_coords = util.extract_coco_format(pose_results2, self.mediapipe_to_coco_indices)
                 front_pose_data.append(front_coords)
                 side_pose_data.append(side_coords)
-                #y.append(front_coords[0][1])
-                ################################################3D
-                front_smoothed_data_abs = util.abs_xy(front_coords,(self.frame_width, self.frame_height))
-                side_smoothed_data_abs = util.abs_xy(side_coords,(self.frame_width, self.frame_height))
- #               coords_3d_data.append(util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2)))
-
 
         front_smoothed_data = util.apply_smoothing(front_pose_data, self.smooth_model, False,'front_smoothed_pose_data.npy')
         side_smoothed_data = util.apply_smoothing(side_pose_data, self.smooth_model, False,'side_smoothed_pose_data.npy')
-#        smooth_coords_3d = util.apply_3Dsmoothing(coords_3d_data,self.smooth_model_3d, False,'smoothed_3D_pose_data.npy')
         #######임계값 기반 체크 ###########################################근데 여기에 모델추가해서 모델이 부상이라하면 1차 필터링
         stance_list, knee_position_list, knee_angle_list = [], [], []
 
@@ -231,42 +225,37 @@ class PoseEstimator:
 
                 stance_list.append(Pose_check.check_stance(front_coords_dict))
                 knee_position_list.append(Pose_check.check_knee_position(side_coords_dict, side='right'))
-                knee_angle_list.append(Pose_check.calculate_knee_angle(side_coords_dict, side='right'))
-
+                knee_angle_check, knee_angle =Pose_check.calculate_knee_angle(side_coords_dict, side='right')
+                knee_angle_list.append(knee_angle_check)
+                knee_angle_deg.append(knee_angle)
                 frame1_smoothed = frame1.copy()
                 frame2_smoothed = frame2.copy()
-                # frame1_smoothed = util.draw_2d_landmarks(frame1_smoothed, front_coords_dict, connections, body_parts,
-                #                                          (self.frame_height, self.frame_width))
-                # frame2_smoothed = util.draw_2d_landmarks(frame2_smoothed, side_coords_dict, connections_right, body_parts,
-                #                                          (self.frame_height, self.frame_width))
+                frame1_smoothed = util.draw_2d_landmarks(frame1_smoothed, front_coords_dict, connections, body_parts,
+                                                         (self.frame_height, self.frame_width))
+                frame2_smoothed = util.draw_2d_landmarks(frame2_smoothed, side_coords_dict, connections_right, body_parts,
+                                                         (self.frame_height, self.frame_width))
 
                 ### 한솔 Test draw
                 front_smoothed_data_abs = util.abs_xy(front_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
                 side_smoothed_data_abs = util.abs_xy(side_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
-    #             frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
-    #             frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
-    #             # print(coords_3d)
-    #             # print("3D좌표")
-    #             # projection_coords_3d = coords_3d
-    #             # for i in range(len(projection_coords_3d)):
-                    
-    #             #     projection_coords_3d[]
-    # #
-    #             smooth_coords_3d=util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2))
-    #             util.draw_3d_landmarks(ax,writer,smooth_coords_3d)
+                frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
+                frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
 
-    #             cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
-    #             cv2.imshow("Side Camera - Smoothed", frame2_smoothed)
+                smooth_coords_3d=util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2))
+                util.draw_3d_landmarks(ax,writer,smooth_coords_3d)
+
+                cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
+                cv2.imshow("Side Camera - Smoothed", frame2_smoothed)
 
 
-    #             self.front_video_writer.write(frame1_smoothed)
-    #             self.side_video_writer.write(frame2_smoothed)
+                self.front_video_writer.write(frame1_smoothed)
+                self.side_video_writer.write(frame2_smoothed)
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
         
         nose_y = front_smoothed_data[:, 0, 1]
-        count_list, squat_count = counting_f.squart_count(nose_y)
+        count_list, squat_count = counting_f.squart_count(nose_y,knee_angle_deg)
         util.count_injury(stance_list, knee_position_list, knee_angle_list, count_list, self.health_warning)
 
         with open("data/smooth.json", 'w') as f:
@@ -286,7 +275,7 @@ class PoseEstimator:
 
 if __name__ == "__main__":
     front_video = 'data/normal.mp4'
-    side_video = 'data/hak_s.mp4'
+    side_video = 'data/normal.mp4'
     output_front_file = 'data/output1_t.mp4'
     output_side_file = 'data/output2_t.mp4'
 

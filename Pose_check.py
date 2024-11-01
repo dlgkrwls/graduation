@@ -6,7 +6,7 @@ import numpy as np
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # 정면 캠
 # 스탠스 발 어깨 너비 벌리기
-def check_stance(coords_2d_1, tolerance=0.1):
+def check_stance(coords_2d_1, tolerance=0.3):
     left_foot = coords_2d_1['left_ankle']
     right_foot = coords_2d_1['right_ankle']
     left_shoulder = coords_2d_1['left_shoulder']
@@ -90,7 +90,7 @@ def check_waist_length_diff(n_len, pre_len):
 # @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 # 측면 캠
 # 무릎이 앞발끝 넘는지
-def check_knee_position(coords_2d_2, tolerance=0.1, side='left'):
+def check_knee_position(coords_2d_2, tolerance=0.5, side='left'):
     # 측면에서의 무릎과 발끝 비교 (x 좌표만 사용)
     if side == 'left':
         knee_x = coords_2d_2['left_knee'][0]
@@ -145,7 +145,7 @@ def calculate_knee_angle(coords_2d_2, side='left'):
     #print(angle_deg)
     if angle_deg < 30:
         check = 0
-    return check
+    return check, angle_deg
 
 
 # 허리 굽힘 측정을 위한 허리 길이 계산
