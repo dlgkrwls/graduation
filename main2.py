@@ -55,7 +55,7 @@ class PoseEstimator:
         self.output_side_file = output_side_file
         self.health_warning = {'frames': []}
         self.camera_matrix1, self.dist_coeffs1, self.camera_matrix2, self.dist_coeffs2 = util.setup_camera()
-        self.checkpoint_path = 'smoothing_npy_return/hrnet_32.pth (1).tar'
+        self.checkpoint_path = 'smoothing_npy_return/checkpoint_16.pth (1).tar'
  #       self.checkpoint_path_3D = 'smoothing_npy_return/3D_smooth.tar'
         self.mediapipe_to_coco_indices = [
             0,  # nose
@@ -172,7 +172,7 @@ class PoseEstimator:
                 side_coords = util.extract_coco_format(pose_results2, self.mediapipe_to_coco_indices)
                 front_pose_data.append(front_coords)
                 side_pose_data.append(side_coords)
-                y.append(front_coords[0][1])
+                #y.append(front_coords[0][1])
                 ################################################3D
                 front_smoothed_data_abs = util.abs_xy(front_coords,(self.frame_width, self.frame_height))
                 side_smoothed_data_abs = util.abs_xy(side_coords,(self.frame_width, self.frame_height))
@@ -243,29 +243,30 @@ class PoseEstimator:
                 ### 한솔 Test draw
                 front_smoothed_data_abs = util.abs_xy(front_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
                 side_smoothed_data_abs = util.abs_xy(side_smoothed_data[frame_idx],(self.frame_width, self.frame_height))
-                frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
-                frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
-                # print(coords_3d)
-                # print("3D좌표")
-                # projection_coords_3d = coords_3d
-                # for i in range(len(projection_coords_3d)):
+    #             frame1_smoothed = util.draw_pose(front_smoothed_data[frame_idx],frame1_smoothed,(self.frame_width, self.frame_height))
+    #             frame2_smoothed = util.draw_pose(side_smoothed_data[frame_idx],frame2_smoothed,(self.frame_width, self.frame_height))
+    #             # print(coords_3d)
+    #             # print("3D좌표")
+    #             # projection_coords_3d = coords_3d
+    #             # for i in range(len(projection_coords_3d)):
                     
-                #     projection_coords_3d[]
-    #
-                smooth_coords_3d=util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2))
-                print("k")
-                util.draw_3d_landmarks(ax,writer,smooth_coords_3d)
+    #             #     projection_coords_3d[]
+    # #
+    #             smooth_coords_3d=util.scale_3d_coords(util.triangulate_3d_points(front_smoothed_data_abs,side_smoothed_data_abs,self.P1,self.P2))
+    #             util.draw_3d_landmarks(ax,writer,smooth_coords_3d)
 
-                cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
-                cv2.imshow("Side Camera - Smoothed", frame2_smoothed)
+    #             cv2.imshow("Front Camera - Smoothed", frame1_smoothed)
+    #             cv2.imshow("Side Camera - Smoothed", frame2_smoothed)
 
 
-                self.front_video_writer.write(frame1_smoothed)
-                self.side_video_writer.write(frame2_smoothed)
+    #             self.front_video_writer.write(frame1_smoothed)
+    #             self.side_video_writer.write(frame2_smoothed)
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-        count_list, squat_count = counting_f.squart_count(y)
+        
+        nose_y = front_smoothed_data[:, 0, 1]
+        count_list, squat_count = counting_f.squart_count(nose_y)
         util.count_injury(stance_list, knee_position_list, knee_angle_list, count_list, self.health_warning)
 
         with open("data/smooth.json", 'w') as f:
@@ -284,8 +285,8 @@ class PoseEstimator:
 
 
 if __name__ == "__main__":
-    front_video = 'data/detect_5_squart_front.mp4'
-    side_video = 'data/detect_5_squart.mp4'
+    front_video = 'data/normal.mp4'
+    side_video = 'data/hak_s.mp4'
     output_front_file = 'data/output1_t.mp4'
     output_side_file = 'data/output2_t.mp4'
 

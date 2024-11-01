@@ -17,8 +17,8 @@ SKELETON = [
 NUM_KPTS = 17
 
 def setup_smooth_model(checkpoint_path):
-        window_size = 32
-        output_size = 32
+        window_size = 16
+        output_size = 16
         hidden_size = 512
         res_hidden_size = 128
         num_blocks = 5
@@ -275,7 +275,6 @@ def draw_2d_landmarks(frame,coords,connections,body_part):
     return frame
 # 3d 좌표찍기
 def draw_3d_landmarks(ax,writer,coord_3d):
-    print("k")
     ax.clear()
     # 좌표찍기
 
